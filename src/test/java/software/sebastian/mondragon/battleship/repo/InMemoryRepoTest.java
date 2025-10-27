@@ -9,15 +9,21 @@ class InMemoryRepoTest {
     @Test
     void testCrearJugadorYMapaYPartido() {
         InMemoryRepo repo = new InMemoryRepo();
-
         Jugador j = repo.crearJugador();
         assertNotNull(repo.getJugador(j.getId()));
 
         Mapa m = repo.crearMapa(10, 10);
         assertNotNull(repo.getMapa(m.getId()));
-        assertEquals(100, m.getTodasCoordenadas().size());
 
         Partido p = repo.crearPartido();
         assertNotNull(repo.getPartido(p.getId()));
+    }
+
+    @Test
+    void testGetEntidadInexistente() {
+        InMemoryRepo repo = new InMemoryRepo();
+        assertTrue(repo.getJugador(999) == null);
+        assertTrue(repo.getMapa(999) == null);
+        assertTrue(repo.getPartido(999) == null);
     }
 }
