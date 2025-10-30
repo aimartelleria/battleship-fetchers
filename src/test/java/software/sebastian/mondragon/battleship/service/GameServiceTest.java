@@ -6,6 +6,7 @@ import org.junit.jupiter.api.function.Executable;
 import software.sebastian.mondragon.battleship.model.*;
 import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -200,6 +201,17 @@ class GameServiceTest {
     }
 
     @Test
+    void testValidarCoordenadaDisponibleConEstadoNoPermitido() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("validarCoordenadaDisponible", Coordenada.class);
+        method.setAccessible(true);
+        Coordenada coordenada = new Coordenada(1, 0, 0);
+        coordenada.setEstado(EstadoCoordenada.AGUA);
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> method.invoke(service, coordenada));
+        assertTrue(ex.getCause() instanceof IllegalStateException);
+    }
+
+    @Test
     void testDispararHundidoYGanador() {
         Jugador j1 = service.crearJugador();
         Jugador j2 = service.crearJugador();
@@ -234,11 +246,101 @@ class GameServiceTest {
     }
 
     @Test
+    void testCambiarTurnoConUnSoloJugadorNoCambiaTurno() {
+        Partido p = new Partido(2);
+        p.setJugador1Id(10);
+        invokePrivate("cambiarTurno", new Class[]{Partido.class}, p);
+        assertNull(p.getTurnoJugadorId());
+    }
+
+    @Test
     void testIniciarPartidoNoListoMantieneEstado() {
         Partido p = new Partido(2);
         invokePrivate("iniciarPartidoSiListo", new Class[]{Partido.class}, p);
         assertEquals(EstadoPartido.ESPERANDO_JUGADORES, p.getEstado());
         assertNull(p.getTurnoJugadorId());
+    }
+
+    @Test
+    void testIniciarPartidoConUnSoloJugadorMantieneEstado() {
+        Partido p = new Partido(3);
+        p.setJugador1Id(1);
+        invokePrivate("iniciarPartidoSiListo", new Class[]{Partido.class}, p);
+        assertEquals(EstadoPartido.ESPERANDO_JUGADORES, p.getEstado());
+    }
+
+    @Test
+    void testIniciarPartidoConEstadoNoEsperandoNoCambia() {
+        Partido p = new Partido(4);
+        p.setJugador1Id(1);
+        p.setJugador2Id(2);
+        p.setEstado(EstadoPartido.EN_CURSO);
+        invokePrivate("iniciarPartidoSiListo", new Class[]{Partido.class}, p);
+        assertEquals(EstadoPartido.EN_CURSO, p.getEstado());
+    }
+
+    @Test
+    void testJugadorTieneTurnoCoberturaCompleta() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("jugadorTieneTurno", int.class, Partido.class);
+        method.setAccessible(true);
+
+        Partido p = new Partido(5);
+        assertFalse((Boolean) method.invoke(service, 1, p));
+
+        p.setTurnoJugadorId(2);
+        assertFalse((Boolean) method.invoke(service, 1, p));
+
+        p.setTurnoJugadorId(1);
+        assertTrue((Boolean) method.invoke(service, 1, p));
+    }
+
+    @Test
+    void testAsegurarMapaParaJugadorNoReasigna() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("asegurarMapaParaJugador", Jugador.class);
+        method.setAccessible(true);
+
+        Jugador jugador = repo.crearJugador();
+        Mapa mapaExistente = repo.crearMapa(3, 3);
+        jugador.setMapaId(mapaExistente.getId());
+
+        method.invoke(service, jugador);
+
+        assertEquals(mapaExistente.getId(), jugador.getMapaId());
+    }
+
+    @Test
+    void testProcesarDisparoImpactoConsideraCoordenadaHundida() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("procesarDisparoImpacto",
+                Partido.class, int.class, int.class, int.class, int.class, Coordenada.class, Mapa.class);
+        method.setAccessible(true);
+
+        Partido partido = new Partido(6);
+        partido.setJugador1Id(1);
+        partido.setJugador2Id(2);
+        partido.setTurnoJugadorId(1);
+
+        Mapa mapa = repo.crearMapa(5, 5);
+        Barco barco = mapa.crearBarco(List.of(new int[]{0, 0}, new int[]{0, 1}));
+        Coordenada primera = mapa.getCoordenadaById(barco.getCoordenadaIds().get(0));
+        Coordenada segunda = mapa.getCoordenadaById(barco.getCoordenadaIds().get(1));
+        primera.setEstado(EstadoCoordenada.HUNDIDO);
+
+        ResultadoDisparo resultado = (ResultadoDisparo) method.invoke(
+                service, partido, 1, 2, segunda.getFila(), segunda.getColumna(), segunda, mapa);
+
+        assertEquals(ResultadoDisparo.HUNDIDO, resultado);
+    }
+
+    @Test
+    void testNotificarResultadoDisparoHundidoSinBarcoId() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("notificarResultadoDisparo",
+                int.class, int.class, int.class, int.class, ResultadoDisparo.class, Integer.class);
+        method.setAccessible(true);
+
+        notifications.clear();
+        method.invoke(service, 1, 2, 0, 0, ResultadoDisparo.HUNDIDO, null);
+
+        assertTrue(notifications.stream().anyMatch(msg -> msg.contains("HUNDIDO")));
     }
 
     private void invokePrivate(String name, Class<?>[] parameterTypes, Object... args) {

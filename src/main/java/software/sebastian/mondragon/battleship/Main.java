@@ -51,9 +51,7 @@ public class Main {
         Mapa mapa1 = repo.getMapa(j1.getMapaId());
         Mapa mapa2 = repo.getMapa(j2.getMapaId());
         // evitar warnings de compilacion por variables no usadas en esta demo
-        if (mapa1 == null || mapa2 == null) {
-            throw new IllegalStateException("Mapas no inicializados");
-        }
+        validarMapas(mapa1, mapa2);
 
         // Colocar barcos simples (por demo). Un barco de 2 celdas para cada uno.
         gs.colocarBarco(j1.getId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
@@ -71,5 +69,11 @@ public class Main {
 
         // continuar hasta que uno gane (en una app real, aqui habria loops / UI / REST)
         LOGGER.log(Level.INFO, "Demo finalizado. Estado final del partido: {0}", repo.getPartido(p.getId()));
+    }
+
+    static void validarMapas(Mapa mapa1, Mapa mapa2) {
+        if (mapa1 == null || mapa2 == null) {
+            throw new IllegalStateException("Mapas no inicializados");
+        }
     }
 }
