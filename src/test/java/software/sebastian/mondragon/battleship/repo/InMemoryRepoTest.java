@@ -9,6 +9,7 @@ class InMemoryRepoTest {
     @Test
     void testCrearJugadorYMapaYPartido() {
         InMemoryRepo repo = new InMemoryRepo();
+        assertTrue(repo.getTodosPartidos().isEmpty());
 
         Jugador j = repo.crearJugador();
         assertNotNull(repo.getJugador(j.getId()));
@@ -19,5 +20,6 @@ class InMemoryRepoTest {
 
         Partido p = repo.crearPartido();
         assertNotNull(repo.getPartido(p.getId()));
+        assertEquals(1, repo.getTodosPartidos().size());
     }
 }

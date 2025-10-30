@@ -19,5 +19,6 @@ class BarcoTest {
         assertFalse(barco.isHundido());
         barco.setHundido(true);
         assertTrue(barco.isHundido());
+        assertTrue(barco.toString().contains("Barco{"));
     }
 }

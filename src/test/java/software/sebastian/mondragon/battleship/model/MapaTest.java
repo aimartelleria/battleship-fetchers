@@ -10,6 +10,8 @@ class MapaTest {
     void testCrearMapaYCoordenadas() {
         Mapa mapa = new Mapa(1, 5, 5);
         assertEquals(25, mapa.getTodasCoordenadas().size());
+        assertEquals(5, mapa.getFilas());
+        assertEquals(5, mapa.getColumnas());
 
         Coordenada c = mapa.buscarPorFilaCol(2, 3).orElse(null);
         assertNotNull(c);

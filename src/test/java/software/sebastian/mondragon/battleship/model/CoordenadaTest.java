@@ -18,5 +18,6 @@ class CoordenadaTest {
         c.setEstado(EstadoCoordenada.TOCADO);
         assertEquals(10, c.getBarcoId());
         assertEquals(EstadoCoordenada.TOCADO, c.getEstado());
+        assertTrue(c.toString().contains("Coordenada{"));
     }
 }
