@@ -2,6 +2,7 @@ package software.sebastian.mondragon.battleship.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import software.sebastian.mondragon.battleship.model.*;
 import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
 
@@ -38,8 +39,8 @@ class GameServiceTest {
         assertNotNull(repo.getJugador(j2.getId()).getMapaId());
 
         // colocar barcos
-        service.colocarBarco(j1.getId(), Arrays.asList(new int[]{0,0}, new int[]{0,1}));
-        service.colocarBarco(j2.getId(), Arrays.asList(new int[]{5,5}, new int[]{5,6}));
+        service.colocarBarco(j1.getId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
+        service.colocarBarco(j2.getId(), Arrays.asList(new int[]{5, 5}, new int[]{5, 6}));
 
         // forzar inicio de partida manualmente
         p.setEstado(EstadoPartido.EN_CURSO);
@@ -78,19 +79,21 @@ class GameServiceTest {
         p.setEstado(EstadoPartido.EN_CURSO);
         p.setTurnoJugadorId(j1.getId());
 
-        assertThrows(IllegalStateException.class, () ->
-                service.disparar(j2.getId(), p.getId(), 1, 1));
+        Executable disparoFueraDeTurno = () -> service.disparar(j2.getId(), p.getId(), 1, 1);
+        assertThrows(IllegalStateException.class, disparoFueraDeTurno);
     }
 
     @Test
     void testCrearPartidoJugadorInexistente() {
-        assertThrows(IllegalArgumentException.class, () -> service.crearPartido(999));
+        Executable crearPartido = () -> service.crearPartido(999);
+        assertThrows(IllegalArgumentException.class, crearPartido);
     }
 
     @Test
     void testUnirsePartidoNoExiste() {
         Jugador j = service.crearJugador();
-        assertThrows(IllegalArgumentException.class, () -> service.unirsePartido(999, j.getId()));
+        Executable unirsePartido = () -> service.unirsePartido(999, j.getId());
+        assertThrows(IllegalArgumentException.class, unirsePartido);
     }
 
     @Test
@@ -100,14 +103,16 @@ class GameServiceTest {
         Jugador j3 = service.crearJugador();
         Partido p = service.crearPartido(j1.getId());
         service.unirsePartido(p.getId(), j2.getId());
-        assertThrows(IllegalStateException.class, () -> service.unirsePartido(p.getId(), j3.getId()));
+        Executable unirTercerJugador = () -> service.unirsePartido(p.getId(), j3.getId());
+        assertThrows(IllegalStateException.class, unirTercerJugador);
     }
 
     @Test
     void testUnirsePartidoConMismoJugador() {
         Jugador j1 = service.crearJugador();
         Partido p = service.crearPartido(j1.getId());
-        assertThrows(IllegalArgumentException.class, () -> service.unirsePartido(p.getId(), j1.getId()));
+        Executable unirMismoJugador = () -> service.unirsePartido(p.getId(), j1.getId());
+        assertThrows(IllegalArgumentException.class, unirMismoJugador);
     }
 
     @Test
@@ -125,22 +130,24 @@ class GameServiceTest {
 
     @Test
     void testColocarBarcoJugadorInexistente() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.colocarBarco(123, List.of(new int[]{0, 0})));
+        List<int[]> posiciones = List.of(new int[]{0, 0});
+        Executable colocarBarco = () -> service.colocarBarco(123, posiciones);
+        assertThrows(IllegalArgumentException.class, colocarBarco);
     }
 
     @Test
     void testColocarBarcoSinMapaAsignado() {
         Jugador j = service.crearJugador();
-        assertThrows(IllegalStateException.class,
-                () -> service.colocarBarco(j.getId(), List.of(new int[]{0, 0})));
+        List<int[]> posiciones = List.of(new int[]{0, 0});
+        Executable colocarBarco = () -> service.colocarBarco(j.getId(), posiciones);
+        assertThrows(IllegalStateException.class, colocarBarco);
     }
 
     @Test
     void testDispararPartidoInexistente() {
         Jugador j = service.crearJugador();
-        assertThrows(IllegalArgumentException.class,
-                () -> service.disparar(j.getId(), 999, 0, 0));
+        Executable disparoInexistente = () -> service.disparar(j.getId(), 999, 0, 0);
+        assertThrows(IllegalArgumentException.class, disparoInexistente);
     }
 
     @Test
@@ -151,8 +158,8 @@ class GameServiceTest {
         service.unirsePartido(p.getId(), j2.getId());
         p.setEstado(EstadoPartido.FINALIZADO);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalStateException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 0, 0));
+        Executable disparoFueraDeEstado = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        assertThrows(IllegalStateException.class, disparoFueraDeEstado);
     }
 
     @Test
@@ -161,8 +168,8 @@ class GameServiceTest {
         Partido p = service.crearPartido(j1.getId());
         p.setEstado(EstadoPartido.EN_CURSO);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalStateException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 0, 0));
+        Executable disparoSinOponente = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        assertThrows(IllegalStateException.class, disparoSinOponente);
     }
 
     @Test
@@ -173,8 +180,8 @@ class GameServiceTest {
         service.unirsePartido(p.getId(), j2.getId());
         p.setEstado(EstadoPartido.EN_CURSO);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalArgumentException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 50, 50));
+        Executable disparoFueraDeMapa = () -> service.disparar(j1.getId(), p.getId(), 50, 50);
+        assertThrows(IllegalArgumentException.class, disparoFueraDeMapa);
     }
 
     @Test
@@ -188,8 +195,8 @@ class GameServiceTest {
         ResultadoDisparo r = service.disparar(j1.getId(), p.getId(), 0, 0);
         assertEquals(ResultadoDisparo.AGUA, r);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalStateException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 0, 0));
+        Executable disparoRepetido = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        assertThrows(IllegalStateException.class, disparoRepetido);
     }
 
     @Test

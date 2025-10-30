@@ -23,8 +23,8 @@ public class Mapa {
     private void initCoordenadas() {
         for (int r = 0; r < filas; r++) {
             for (int c = 0; c < columnas; c++) {
-                int id = coordIdGen.getAndIncrement();
-                coordenadas.put(id, new Coordenada(id, r, c));
+                int coordId = coordIdGen.getAndIncrement();
+                coordenadas.put(coordId, new Coordenada(coordId, r, c));
             }
         }
     }
@@ -55,7 +55,7 @@ public class Mapa {
             int col = pos[1];
             Optional<Coordenada> oc = buscarPorFilaCol(fila, col);
             if (!oc.isPresent()) {
-                throw new IllegalArgumentException("Posición fuera de mapa: " + fila + "," + col);
+                throw new IllegalArgumentException("Posicion fuera de mapa: " + fila + "," + col);
             }
             Coordenada coord = oc.get();
             if (coord.getBarcoId() != null) {
