@@ -1,16 +1,17 @@
 package software.sebastian.mondragon.battleship.service;
 
-
 import software.sebastian.mondragon.battleship.model.*;
 import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
 
+import java.security.SecureRandom;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 
 public class GameService {
     private final InMemoryRepo repo;
-    private final Random rnd = new Random();
+    private final Random rnd = new SecureRandom();
 
     // Proveedor de notificaciones (puede reemplazarse por websockets / eventos)
     public interface Notifier {
@@ -24,15 +25,13 @@ public class GameService {
         this.notifier = notifier;
     }
 
-    /* operaciones básicas */
+    /* operaciones basicas */
     public Jugador crearJugador() {
         return repo.crearJugador();
     }
 
     public Partido crearPartido(int creadorJugadorId) {
-        Jugador j = repo.getJugador(creadorJugadorId);
-        if (j == null) throw new IllegalArgumentException("Jugador no existe: " + creadorJugadorId);
-
+        obtenerJugador(creadorJugadorId);
         Partido p = repo.crearPartido();
         p.setJugador1Id(creadorJugadorId);
         p.setEstado(EstadoPartido.ESPERANDO_JUGADORES);
@@ -41,29 +40,22 @@ public class GameService {
     }
 
     public Partido unirsePartido(int partidoId, int jugadorId) {
-        Partido p = repo.getPartido(partidoId);
-        if (p == null) throw new IllegalArgumentException("Partido no existe: " + partidoId);
+        Partido p = obtenerPartido(partidoId, "Partido no existe: " + partidoId);
         if (p.getJugador2Id() != null) throw new IllegalStateException("Partido ya tiene 2 jugadores");
-        if (p.getJugador1Id() != null && p.getJugador1Id() == jugadorId)
-            throw new IllegalArgumentException("Jugador ya está en la partida");
+        if (Objects.equals(p.getJugador1Id(), jugadorId))
+            throw new IllegalArgumentException("Jugador ya esta en la partida");
 
         p.setJugador2Id(jugadorId);
 
         // Crear mapas por defecto para cada jugador si no tienen
-        Jugador j = repo.getJugador(jugadorId);
-        if (j.getMapaId() == null) {
-            Mapa m = repo.crearMapa(10, 10);
-            j.setMapaId(m.getId());
-        }
+        Jugador j = obtenerJugador(jugadorId);
+        asegurarMapaParaJugador(j);
 
-        // también aseguramos que el jugador1 tenga mapa
-        Jugador j1 = repo.getJugador(p.getJugador1Id());
-        if (j1.getMapaId() == null) {
-            Mapa m1 = repo.crearMapa(10, 10);
-            j1.setMapaId(m1.getId());
-        }
+        // tambien aseguramos que el jugador1 tenga mapa
+        Jugador j1 = obtenerJugador(p.getJugador1Id());
+        asegurarMapaParaJugador(j1);
 
-        // Cuando hay 2 jugadores se inicia automáticamente la partida
+        // Cuando hay 2 jugadores se inicia automaticamente la partida
         iniciarPartidoSiListo(p);
         notifier.notifyJugador(jugadorId, "Te has unido a la partida " + p.getId());
         notifier.notifyJugador(p.getJugador1Id(), "Jugador " + jugadorId + " se ha unido a tu partida " + p.getId());
@@ -83,85 +75,27 @@ public class GameService {
 
     /* colocar barco de forma manual: posiciones como lista de [fila,columna] */
     public Barco colocarBarco(int jugadorId, List<int[]> posiciones) {
-        Jugador j = repo.getJugador(jugadorId);
-        if (j == null) throw new IllegalArgumentException("Jugador no existe: " + jugadorId);
-        if (j.getMapaId() == null) throw new IllegalStateException("Jugador no tiene mapa");
-        Mapa mapa = repo.getMapa(j.getMapaId());
+        Jugador j = obtenerJugador(jugadorId);
+        Mapa mapa = obtenerMapaDeJugador(j);
         return mapa.crearBarco(posiciones);
     }
 
     /* disparar */
     public ResultadoDisparo disparar(int jugadorId, int partidoId, int fila, int columna) {
-        Partido p = repo.getPartido(partidoId);
-        if (p == null) throw new IllegalArgumentException("Partido no existe");
-        if (p.getEstado() != EstadoPartido.EN_CURSO) throw new IllegalStateException("Partida no en curso");
-        if (!jugadorTieneTurno(jugadorId, p)) throw new IllegalStateException("No es tu turno");
+        Partido partido = obtenerPartidoEnCurso(partidoId);
+        validarTurno(jugadorId, partido);
+        int oponenteId = obtenerOponenteId(partido, jugadorId);
+        Jugador oponente = obtenerJugador(oponenteId);
+        Mapa mapaOponente = obtenerMapaDeJugador(oponente);
 
-        Optional<Integer> oponenteOp = p.otroJugador(jugadorId);
-        if (!oponenteOp.isPresent()) throw new IllegalStateException("No hay oponente");
+        Coordenada coordenada = obtenerCoordenada(mapaOponente, fila, columna);
+        validarCoordenadaDisponible(coordenada);
 
-        int oponenteId = oponenteOp.get();
-        Jugador opp = repo.getJugador(oponenteId);
-        Mapa mapaOpp = repo.getMapa(opp.getMapaId());
+        ResultadoDisparo resultado = coordenada.getBarcoId() == null
+                ? procesarDisparoAgua(partido, jugadorId, oponenteId, fila, columna, coordenada)
+                : procesarDisparoImpacto(partido, jugadorId, oponenteId, fila, columna, coordenada, mapaOponente);
 
-        // buscar coordenada
-        Optional<Coordenada> oc = mapaOpp.buscarPorFilaCol(fila, columna);
-        if (!oc.isPresent()) {
-            throw new IllegalArgumentException("Coordenada fuera del mapa");
-        }
-        Coordenada coord = oc.get();
-
-        // si ya dispararon ahí
-        if (coord.getEstado() != EstadoCoordenada.SIN_DISPARAR) {
-            throw new IllegalStateException("Ya se ha disparado en esa coordenada");
-        }
-
-        ResultadoDisparo resultado;
-        if (coord.getBarcoId() == null) {
-            coord.setEstado(EstadoCoordenada.AGUA);
-            resultado = ResultadoDisparo.AGUA;
-            notifier.notifyJugador(jugadorId, "Disparaste a (" + fila + "," + columna + "): AGUA");
-            notifier.notifyJugador(oponenteId, "Te han disparado en (" + fila + "," + columna + "): AGUA");
-            // cambia turno
-            cambiarTurno(p);
-        } else {
-            // hay barco -> tocado o hundido
-            coord.setEstado(EstadoCoordenada.TOCADO); // provisional
-            Barco barco = mapaOpp.getBarco(coord.getBarcoId());
-            // comprobar si todas las coordenadas del barco están tocadas
-            boolean hundido = barco.getCoordenadaIds().stream()
-                    .map(mapaOpp::getCoordenadaById)
-                    .allMatch(c -> c.getEstado() == EstadoCoordenada.TOCADO || c.getEstado() == EstadoCoordenada.HUNDIDO);
-
-            if (hundido) {
-                // marcar todas como hundidas
-                barco.getCoordenadaIds().forEach(cid -> {
-                    Coordenada cc = mapaOpp.getCoordenadaById(cid);
-                    cc.setEstado(EstadoCoordenada.HUNDIDO);
-                });
-                barco.setHundido(true);
-                resultado = ResultadoDisparo.HUNDIDO;
-                notifier.notifyJugador(jugadorId, "Disparaste a (" + fila + "," + columna + "): HUNDIDO (barco id " + barco.getId() + ")");
-                notifier.notifyJugador(oponenteId, "Te han disparado en (" + fila + "," + columna + "): HUNDIDO (barco id " + barco.getId() + ")");
-            } else {
-                coord.setEstado(EstadoCoordenada.TOCADO);
-                resultado = ResultadoDisparo.TOCADO;
-                notifier.notifyJugador(jugadorId, "Disparaste a (" + fila + "," + columna + "): TOCADO");
-                notifier.notifyJugador(oponenteId, "Te han disparado en (" + fila + "," + columna + "): TOCADO");
-                // en la mayoría de variantes, cuando tocas no cambia el turno (pero esto depende de la regla).
-                // Aquí vamos a cambiar el turno también para hacer alternancia simple:
-                cambiarTurno(p);
-            }
-        }
-
-        // comprobar victoria: si todos los barcos del oponente están hundidos -> fin
-        boolean todosHundidos = mapaOpp.getBarcos().stream().allMatch(Barco::isHundido);
-        if (todosHundidos) {
-            p.setEstado(EstadoPartido.FINALIZADO);
-            notifier.notifyJugador(jugadorId, "¡Victoria! Has hundido todos los barcos del oponente.");
-            notifier.notifyJugador(oponenteId, "Derrota. Todos tus barcos han sido hundidos.");
-        }
-
+        verificarFinPartido(partido, mapaOponente, jugadorId, oponenteId);
         return resultado;
     }
 
@@ -176,5 +110,117 @@ public class GameService {
     private boolean jugadorTieneTurno(int jugadorId, Partido p) {
         return p.getTurnoJugadorId() != null && p.getTurnoJugadorId().equals(jugadorId);
     }
-}
 
+    private Jugador obtenerJugador(int jugadorId) {
+        Jugador jugador = repo.getJugador(jugadorId);
+        if (jugador == null) {
+            throw new IllegalArgumentException("Jugador no existe: " + jugadorId);
+        }
+        return jugador;
+    }
+
+    private Partido obtenerPartido(int partidoId, String mensajeSiNoExiste) {
+        Partido partido = repo.getPartido(partidoId);
+        if (partido == null) {
+            throw new IllegalArgumentException(mensajeSiNoExiste);
+        }
+        return partido;
+    }
+
+    private Partido obtenerPartidoEnCurso(int partidoId) {
+        Partido partido = obtenerPartido(partidoId, "Partido no existe");
+        if (partido.getEstado() != EstadoPartido.EN_CURSO) {
+            throw new IllegalStateException("Partida no en curso");
+        }
+        return partido;
+    }
+
+    private void validarTurno(int jugadorId, Partido partido) {
+        if (!jugadorTieneTurno(jugadorId, partido)) {
+            throw new IllegalStateException("No es tu turno");
+        }
+    }
+
+    private int obtenerOponenteId(Partido partido, int jugadorId) {
+        Optional<Integer> oponenteOp = partido.otroJugador(jugadorId);
+        return oponenteOp.orElseThrow(() -> new IllegalStateException("No hay oponente"));
+    }
+
+    private void asegurarMapaParaJugador(Jugador jugador) {
+        if (jugador.getMapaId() == null) {
+            Mapa mapa = repo.crearMapa(10, 10);
+            jugador.setMapaId(mapa.getId());
+        }
+    }
+
+    private Mapa obtenerMapaDeJugador(Jugador jugador) {
+        if (jugador.getMapaId() == null) {
+            throw new IllegalStateException("Jugador no tiene mapa");
+        }
+        return repo.getMapa(jugador.getMapaId());
+    }
+
+    private Coordenada obtenerCoordenada(Mapa mapa, int fila, int columna) {
+        return mapa.buscarPorFilaCol(fila, columna)
+                .orElseThrow(() -> new IllegalArgumentException("Coordenada fuera del mapa"));
+    }
+
+    private void validarCoordenadaDisponible(Coordenada coordenada) {
+        if (coordenada.getEstado() != EstadoCoordenada.SIN_DISPARAR) {
+            throw new IllegalStateException("Ya se ha disparado en esa coordenada");
+        }
+    }
+
+    private ResultadoDisparo procesarDisparoAgua(Partido partido, int atacanteId, int defensorId,
+                                                 int fila, int columna, Coordenada coordenada) {
+        coordenada.setEstado(EstadoCoordenada.AGUA);
+        ResultadoDisparo resultado = ResultadoDisparo.AGUA;
+        notificarResultadoDisparo(atacanteId, defensorId, fila, columna, resultado, null);
+        cambiarTurno(partido);
+        return resultado;
+    }
+
+    private ResultadoDisparo procesarDisparoImpacto(Partido partido, int atacanteId, int defensorId,
+                                                    int fila, int columna, Coordenada coordenada, Mapa mapaOponente) {
+        coordenada.setEstado(EstadoCoordenada.TOCADO);
+        Barco barco = mapaOponente.getBarco(coordenada.getBarcoId());
+        boolean hundido = barco.getCoordenadaIds().stream()
+                .map(mapaOponente::getCoordenadaById)
+                .allMatch(c -> c.getEstado() == EstadoCoordenada.TOCADO || c.getEstado() == EstadoCoordenada.HUNDIDO);
+
+        if (hundido) {
+            barco.getCoordenadaIds().forEach(cid -> {
+                Coordenada cc = mapaOponente.getCoordenadaById(cid);
+                cc.setEstado(EstadoCoordenada.HUNDIDO);
+            });
+            barco.setHundido(true);
+            ResultadoDisparo resultado = ResultadoDisparo.HUNDIDO;
+            notificarResultadoDisparo(atacanteId, defensorId, fila, columna, resultado, barco.getId());
+            return resultado;
+        }
+
+        ResultadoDisparo resultado = ResultadoDisparo.TOCADO;
+        notificarResultadoDisparo(atacanteId, defensorId, fila, columna, resultado, null);
+        cambiarTurno(partido);
+        return resultado;
+    }
+
+    private void verificarFinPartido(Partido partido, Mapa mapaOponente, int atacanteId, int defensorId) {
+        boolean todosHundidos = mapaOponente.getBarcos().stream().allMatch(Barco::isHundido);
+        if (todosHundidos) {
+            partido.setEstado(EstadoPartido.FINALIZADO);
+            notifier.notifyJugador(atacanteId, "Victoria! Has hundido todos los barcos del oponente.");
+            notifier.notifyJugador(defensorId, "Derrota. Todos tus barcos han sido hundidos.");
+        }
+    }
+
+    private void notificarResultadoDisparo(int atacanteId, int defensorId, int fila, int columna,
+                                           ResultadoDisparo resultado, Integer barcoId) {
+        String detalle = resultado.name();
+        if (resultado == ResultadoDisparo.HUNDIDO && barcoId != null) {
+            detalle = "HUNDIDO (barco id " + barcoId + ")";
+        }
+        notifier.notifyJugador(atacanteId, "Disparaste a (" + fila + "," + columna + "): " + detalle);
+        notifier.notifyJugador(defensorId, "Te han disparado en (" + fila + "," + columna + "): " + detalle);
+    }
+}

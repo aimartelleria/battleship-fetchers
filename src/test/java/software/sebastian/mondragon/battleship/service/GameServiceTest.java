@@ -2,9 +2,11 @@ package software.sebastian.mondragon.battleship.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import software.sebastian.mondragon.battleship.model.*;
 import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,8 +40,8 @@ class GameServiceTest {
         assertNotNull(repo.getJugador(j2.getId()).getMapaId());
 
         // colocar barcos
-        service.colocarBarco(j1.getId(), Arrays.asList(new int[]{0,0}, new int[]{0,1}));
-        service.colocarBarco(j2.getId(), Arrays.asList(new int[]{5,5}, new int[]{5,6}));
+        service.colocarBarco(j1.getId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
+        service.colocarBarco(j2.getId(), Arrays.asList(new int[]{5, 5}, new int[]{5, 6}));
 
         // forzar inicio de partida manualmente
         p.setEstado(EstadoPartido.EN_CURSO);
@@ -78,19 +80,21 @@ class GameServiceTest {
         p.setEstado(EstadoPartido.EN_CURSO);
         p.setTurnoJugadorId(j1.getId());
 
-        assertThrows(IllegalStateException.class, () ->
-                service.disparar(j2.getId(), p.getId(), 1, 1));
+        Executable disparoFueraDeTurno = () -> service.disparar(j2.getId(), p.getId(), 1, 1);
+        assertThrows(IllegalStateException.class, disparoFueraDeTurno);
     }
 
     @Test
     void testCrearPartidoJugadorInexistente() {
-        assertThrows(IllegalArgumentException.class, () -> service.crearPartido(999));
+        Executable crearPartido = () -> service.crearPartido(999);
+        assertThrows(IllegalArgumentException.class, crearPartido);
     }
 
     @Test
     void testUnirsePartidoNoExiste() {
         Jugador j = service.crearJugador();
-        assertThrows(IllegalArgumentException.class, () -> service.unirsePartido(999, j.getId()));
+        Executable unirsePartido = () -> service.unirsePartido(999, j.getId());
+        assertThrows(IllegalArgumentException.class, unirsePartido);
     }
 
     @Test
@@ -100,14 +104,16 @@ class GameServiceTest {
         Jugador j3 = service.crearJugador();
         Partido p = service.crearPartido(j1.getId());
         service.unirsePartido(p.getId(), j2.getId());
-        assertThrows(IllegalStateException.class, () -> service.unirsePartido(p.getId(), j3.getId()));
+        Executable unirTercerJugador = () -> service.unirsePartido(p.getId(), j3.getId());
+        assertThrows(IllegalStateException.class, unirTercerJugador);
     }
 
     @Test
     void testUnirsePartidoConMismoJugador() {
         Jugador j1 = service.crearJugador();
         Partido p = service.crearPartido(j1.getId());
-        assertThrows(IllegalArgumentException.class, () -> service.unirsePartido(p.getId(), j1.getId()));
+        Executable unirMismoJugador = () -> service.unirsePartido(p.getId(), j1.getId());
+        assertThrows(IllegalArgumentException.class, unirMismoJugador);
     }
 
     @Test
@@ -125,22 +131,24 @@ class GameServiceTest {
 
     @Test
     void testColocarBarcoJugadorInexistente() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.colocarBarco(123, List.of(new int[]{0, 0})));
+        List<int[]> posiciones = List.of(new int[]{0, 0});
+        Executable colocarBarco = () -> service.colocarBarco(123, posiciones);
+        assertThrows(IllegalArgumentException.class, colocarBarco);
     }
 
     @Test
     void testColocarBarcoSinMapaAsignado() {
         Jugador j = service.crearJugador();
-        assertThrows(IllegalStateException.class,
-                () -> service.colocarBarco(j.getId(), List.of(new int[]{0, 0})));
+        List<int[]> posiciones = List.of(new int[]{0, 0});
+        Executable colocarBarco = () -> service.colocarBarco(j.getId(), posiciones);
+        assertThrows(IllegalStateException.class, colocarBarco);
     }
 
     @Test
     void testDispararPartidoInexistente() {
         Jugador j = service.crearJugador();
-        assertThrows(IllegalArgumentException.class,
-                () -> service.disparar(j.getId(), 999, 0, 0));
+        Executable disparoInexistente = () -> service.disparar(j.getId(), 999, 0, 0);
+        assertThrows(IllegalArgumentException.class, disparoInexistente);
     }
 
     @Test
@@ -151,8 +159,8 @@ class GameServiceTest {
         service.unirsePartido(p.getId(), j2.getId());
         p.setEstado(EstadoPartido.FINALIZADO);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalStateException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 0, 0));
+        Executable disparoFueraDeEstado = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        assertThrows(IllegalStateException.class, disparoFueraDeEstado);
     }
 
     @Test
@@ -161,8 +169,8 @@ class GameServiceTest {
         Partido p = service.crearPartido(j1.getId());
         p.setEstado(EstadoPartido.EN_CURSO);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalStateException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 0, 0));
+        Executable disparoSinOponente = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        assertThrows(IllegalStateException.class, disparoSinOponente);
     }
 
     @Test
@@ -173,8 +181,8 @@ class GameServiceTest {
         service.unirsePartido(p.getId(), j2.getId());
         p.setEstado(EstadoPartido.EN_CURSO);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalArgumentException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 50, 50));
+        Executable disparoFueraDeMapa = () -> service.disparar(j1.getId(), p.getId(), 50, 50);
+        assertThrows(IllegalArgumentException.class, disparoFueraDeMapa);
     }
 
     @Test
@@ -188,8 +196,19 @@ class GameServiceTest {
         ResultadoDisparo r = service.disparar(j1.getId(), p.getId(), 0, 0);
         assertEquals(ResultadoDisparo.AGUA, r);
         p.setTurnoJugadorId(j1.getId());
-        assertThrows(IllegalStateException.class,
-                () -> service.disparar(j1.getId(), p.getId(), 0, 0));
+        Executable disparoRepetido = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        assertThrows(IllegalStateException.class, disparoRepetido);
+    }
+
+    @Test
+    void testValidarCoordenadaDisponibleConEstadoNoPermitido() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("validarCoordenadaDisponible", Coordenada.class);
+        method.setAccessible(true);
+        Coordenada coordenada = new Coordenada(1, 0, 0);
+        coordenada.setEstado(EstadoCoordenada.AGUA);
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> method.invoke(service, coordenada));
+        assertTrue(ex.getCause() instanceof IllegalStateException);
     }
 
     @Test
@@ -227,11 +246,101 @@ class GameServiceTest {
     }
 
     @Test
+    void testCambiarTurnoConUnSoloJugadorNoCambiaTurno() {
+        Partido p = new Partido(2);
+        p.setJugador1Id(10);
+        invokePrivate("cambiarTurno", new Class[]{Partido.class}, p);
+        assertNull(p.getTurnoJugadorId());
+    }
+
+    @Test
     void testIniciarPartidoNoListoMantieneEstado() {
         Partido p = new Partido(2);
         invokePrivate("iniciarPartidoSiListo", new Class[]{Partido.class}, p);
         assertEquals(EstadoPartido.ESPERANDO_JUGADORES, p.getEstado());
         assertNull(p.getTurnoJugadorId());
+    }
+
+    @Test
+    void testIniciarPartidoConUnSoloJugadorMantieneEstado() {
+        Partido p = new Partido(3);
+        p.setJugador1Id(1);
+        invokePrivate("iniciarPartidoSiListo", new Class[]{Partido.class}, p);
+        assertEquals(EstadoPartido.ESPERANDO_JUGADORES, p.getEstado());
+    }
+
+    @Test
+    void testIniciarPartidoConEstadoNoEsperandoNoCambia() {
+        Partido p = new Partido(4);
+        p.setJugador1Id(1);
+        p.setJugador2Id(2);
+        p.setEstado(EstadoPartido.EN_CURSO);
+        invokePrivate("iniciarPartidoSiListo", new Class[]{Partido.class}, p);
+        assertEquals(EstadoPartido.EN_CURSO, p.getEstado());
+    }
+
+    @Test
+    void testJugadorTieneTurnoCoberturaCompleta() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("jugadorTieneTurno", int.class, Partido.class);
+        method.setAccessible(true);
+
+        Partido p = new Partido(5);
+        assertFalse((Boolean) method.invoke(service, 1, p));
+
+        p.setTurnoJugadorId(2);
+        assertFalse((Boolean) method.invoke(service, 1, p));
+
+        p.setTurnoJugadorId(1);
+        assertTrue((Boolean) method.invoke(service, 1, p));
+    }
+
+    @Test
+    void testAsegurarMapaParaJugadorNoReasigna() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("asegurarMapaParaJugador", Jugador.class);
+        method.setAccessible(true);
+
+        Jugador jugador = repo.crearJugador();
+        Mapa mapaExistente = repo.crearMapa(3, 3);
+        jugador.setMapaId(mapaExistente.getId());
+
+        method.invoke(service, jugador);
+
+        assertEquals(mapaExistente.getId(), jugador.getMapaId());
+    }
+
+    @Test
+    void testProcesarDisparoImpactoConsideraCoordenadaHundida() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("procesarDisparoImpacto",
+                Partido.class, int.class, int.class, int.class, int.class, Coordenada.class, Mapa.class);
+        method.setAccessible(true);
+
+        Partido partido = new Partido(6);
+        partido.setJugador1Id(1);
+        partido.setJugador2Id(2);
+        partido.setTurnoJugadorId(1);
+
+        Mapa mapa = repo.crearMapa(5, 5);
+        Barco barco = mapa.crearBarco(List.of(new int[]{0, 0}, new int[]{0, 1}));
+        Coordenada primera = mapa.getCoordenadaById(barco.getCoordenadaIds().get(0));
+        Coordenada segunda = mapa.getCoordenadaById(barco.getCoordenadaIds().get(1));
+        primera.setEstado(EstadoCoordenada.HUNDIDO);
+
+        ResultadoDisparo resultado = (ResultadoDisparo) method.invoke(
+                service, partido, 1, 2, segunda.getFila(), segunda.getColumna(), segunda, mapa);
+
+        assertEquals(ResultadoDisparo.HUNDIDO, resultado);
+    }
+
+    @Test
+    void testNotificarResultadoDisparoHundidoSinBarcoId() throws Exception {
+        Method method = GameService.class.getDeclaredMethod("notificarResultadoDisparo",
+                int.class, int.class, int.class, int.class, ResultadoDisparo.class, Integer.class);
+        method.setAccessible(true);
+
+        notifications.clear();
+        method.invoke(service, 1, 2, 0, 0, ResultadoDisparo.HUNDIDO, null);
+
+        assertTrue(notifications.stream().anyMatch(msg -> msg.contains("HUNDIDO")));
     }
 
     private void invokePrivate(String name, Class<?>[] parameterTypes, Object... args) {
