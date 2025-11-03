@@ -17,59 +17,65 @@ class MapaTest {
     @Test
     void crearBarcoHorizontalContiguoEsValido() {
         Mapa mapa = crearMapa();
-
-        assertDoesNotThrow(() -> mapa.crearBarco(Arrays.asList(
+        List<int[]> posiciones = Arrays.asList(
                 new int[]{0, 0},
                 new int[]{0, 1},
                 new int[]{0, 2}
-        )));
+        );
+
+        assertDoesNotThrow(() -> mapa.crearBarco(posiciones));
     }
 
     @Test
     void crearBarcoVerticalContiguoEsValido() {
         Mapa mapa = crearMapa();
-
-        assertDoesNotThrow(() -> mapa.crearBarco(Arrays.asList(
+        List<int[]> posiciones = Arrays.asList(
                 new int[]{1, 5},
                 new int[]{2, 5},
                 new int[]{3, 5}
-        )));
+        );
+
+        assertDoesNotThrow(() -> mapa.crearBarco(posiciones));
     }
 
     @Test
     void crearBarcoDiagonalLanzaExcepcion() {
         Mapa mapa = crearMapa();
-
-        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(Arrays.asList(
+        List<int[]> posiciones = Arrays.asList(
                 new int[]{0, 0},
                 new int[]{1, 1}
-        )));
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posiciones));
     }
 
     @Test
     void crearBarcoNoContiguoLanzaExcepcion() {
         Mapa mapa = crearMapa();
-
-        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(Arrays.asList(
+        List<int[]> posiciones = Arrays.asList(
                 new int[]{4, 4},
                 new int[]{4, 6}
-        )));
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posiciones));
     }
 
     @Test
     void crearBarcoDuplicadoLanzaExcepcion() {
         Mapa mapa = crearMapa();
-
-        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(Arrays.asList(
+        List<int[]> posiciones = Arrays.asList(
                 new int[]{2, 2},
                 new int[]{2, 2}
-        )));
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posiciones));
     }
 
     @Test
     void crearBarcoFueraDelMapaLanzaExcepcion() {
         Mapa mapa = new Mapa(1, 2, 2);
         List<int[]> posicionesFuera = List.of(new int[]{5, 5});
+
         assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posicionesFuera));
     }
 
@@ -78,6 +84,7 @@ class MapaTest {
         Mapa mapa = new Mapa(1, 3, 3);
         List<int[]> posicion = List.of(new int[]{0, 0});
         mapa.crearBarco(posicion);
+
         assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posicion));
     }
 }

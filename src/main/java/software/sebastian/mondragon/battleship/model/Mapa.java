@@ -6,24 +6,24 @@ import java.util.stream.Collectors;
 
 public class Mapa {
     private final int id;
-    private final int filas;
-    private final int columnas;
+    private final int rows;
+    private final int cols;
     // mapa de coordenadaId -> Coordenada
     private final Map<Integer, Coordenada> coordenadas = new HashMap<>();
     private final Map<Integer, Barco> barcos = new HashMap<>();
     private final AtomicInteger coordIdGen = new AtomicInteger(1);
     private final AtomicInteger barcoIdGen = new AtomicInteger(1);
 
-    public Mapa(int id, int filas, int columnas) {
+    public Mapa(int id, int rows, int cols) {
         this.id = id;
-        this.filas = filas;
-        this.columnas = columnas;
+        this.rows = rows;
+        this.cols = cols;
         initCoordenadas();
     }
 
     private void initCoordenadas() {
-        for (int r = 0; r < filas; r++) {
-            for (int c = 0; c < columnas; c++) {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
                 int coordId = coordIdGen.getAndIncrement();
                 coordenadas.put(coordId, new Coordenada(coordId, r, c));
             }
@@ -31,8 +31,8 @@ public class Mapa {
     }
 
     public int getId() { return id; }
-    public int getFilas() { return filas; }
-    public int getColumnas() { return columnas; }
+    public int getRows() { return rows; }
+    public int getCols() { return cols; }
 
     public Optional<Coordenada> buscarPorFilaCol(int fila, int col) {
         return coordenadas.values().stream()
@@ -96,10 +96,10 @@ public class Mapa {
         Set<Integer> columnas = coords.stream().map(Coordenada::getColumna).collect(Collectors.toSet());
 
         if (filas.size() == 1) {
-            List<Integer> ordenCols = columnas.stream().sorted().collect(Collectors.toList());
+            List<Integer> ordenCols = columnas.stream().sorted().toList();
             verificarConsecutivos(ordenCols, "columnas");
         } else if (columnas.size() == 1) {
-            List<Integer> ordenFilas = filas.stream().sorted().collect(Collectors.toList());
+            List<Integer> ordenFilas = filas.stream().sorted().toList();
             verificarConsecutivos(ordenFilas, "filas");
         } else {
             throw new IllegalArgumentException("El barco debe colocarse en línea recta horizontal o vertical");

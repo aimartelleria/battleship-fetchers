@@ -27,7 +27,7 @@ public class Main {
         }
     }
 
-    private static void execute(String[] args) throws Exception {
+    private static void execute(String[] args) throws IOException, NumberFormatException, IllegalArgumentException {
         if (args.length == 0) {
             runDemo();
             return;

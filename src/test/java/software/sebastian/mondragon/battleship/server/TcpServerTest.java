@@ -23,6 +23,11 @@ import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Integration tests for the {@link TcpServer}.
+ * These tests start the TCP server, connect clients, and verify
+ * correct protocol responses and interaction sequences.
+ */
 class TcpServerTest {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
 
@@ -251,7 +256,7 @@ class TcpServerTest {
                     }
                     inbox.addLast(line);
                 } catch (SocketTimeoutException ignored) {
-                    // retry until deadline
+                    // Intentionally ignored: retry until timeout expires
                 }
             }
             fail(failureMessage + " (timeout). Pendientes: " + inbox);
@@ -263,14 +268,17 @@ class TcpServerTest {
             try {
                 writer.close();
             } catch (IOException ignored) {
+                // Intentionally ignored: closing writer during test cleanup
             }
             try {
                 reader.close();
             } catch (IOException ignored) {
+                // Intentionally ignored: closing reader during test cleanup
             }
             try {
                 socket.close();
             } catch (IOException ignored) {
+                // Intentionally ignored: closing socket during test cleanup
             }
         }
     }

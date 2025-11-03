@@ -7,30 +7,21 @@ import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
 import software.sebastian.mondragon.battleship.service.GameService;
 import software.sebastian.mondragon.battleship.service.ResultadoDisparo;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.io.*;
+import java.net.*;
+import java.time.*;
+import java.time.format.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.logging.*;
 import java.util.stream.Collectors;
 
 /**
  * Sencillo servidor TCP con protocolo basado en texto plano para interactuar con {@link GameService}.
  */
 public class TcpServer {
+    private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
+
     private final int port;
     private final InMemoryRepo repo;
     private final Map<Integer, ClientHandler> clientsByPlayer = new ConcurrentHashMap<>();
@@ -60,9 +51,8 @@ public class TcpServer {
     }
 
     public void start() throws IOException {
-        if (running) {
-            return;
-        }
+        if (running) return;
+
         running = true;
         serverSocket = new ServerSocket(port);
         acceptThread = new Thread(this::acceptLoop, "battleship-accept");
@@ -76,6 +66,7 @@ public class TcpServer {
             try {
                 serverSocket.close();
             } catch (IOException ignored) {
+                // Intentionally ignored: server is stopping
             }
         }
         clientsByPlayer.values().forEach(ClientHandler::closeQuietly);
@@ -84,7 +75,7 @@ public class TcpServer {
             try {
                 acceptThread.join(TimeUnit.SECONDS.toMillis(1));
             } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
+                Thread.currentThread().interrupt(); // Preserve interrupt status
             }
         }
     }
@@ -101,7 +92,8 @@ public class TcpServer {
                 clientExecutor.submit(handler);
             } catch (IOException e) {
                 if (running) {
-                    System.err.println(timestamp() + " [ERROR] Aceptando conexión: " + e.getMessage());
+                    LOGGER.log(Level.SEVERE, "{0} [ERROR] Aceptando conexión: {1}",
+                            new Object[]{timestamp(), e.getMessage()});
                 }
             }
         }
@@ -131,26 +123,34 @@ public class TcpServer {
         @Override
         public void run() {
             try (socket; reader; writer) {
-                String line;
-                while (active && (line = reader.readLine()) != null) {
-                    line = line.trim();
-                    if (line.isEmpty()) {
-                        continue;
-                    }
-                    try {
-                        handleCommand(line);
-                    } catch (IllegalArgumentException | IllegalStateException ex) {
-                        sendError(ex.getMessage());
-                    } catch (Exception ex) {
-                        sendError("Unexpected error: " + ex.getMessage());
-                    }
-                }
+                processClientCommands();
             } catch (IOException ex) {
                 if (active) {
-                    System.err.println(timestamp() + " [WARN] Error en cliente: " + ex.getMessage());
+                    LOGGER.log(Level.WARNING, "{0} [WARN] Error en cliente: {1}",
+                            new Object[]{timestamp(), ex.getMessage()});
                 }
             } finally {
                 cleanup();
+            }
+        }
+
+        /**
+         * Separated logic for reading and processing client commands.
+         * Improves clarity and testability.
+         */
+        private void processClientCommands() throws IOException {
+            String line;
+            while (active && (line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                try {
+                    handleCommand(line);
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                    sendError(ex.getMessage());
+                } catch (Exception ex) {
+                    LOGGER.log(Level.SEVERE, "Unexpected error processing command", ex);
+                    sendError("Unexpected error: " + ex.getMessage());
+                }
             }
         }
 
@@ -158,44 +158,37 @@ public class TcpServer {
             String[] tokens = line.split("\\s+");
             String command = tokens[0].toUpperCase(Locale.ROOT);
             switch (command) {
-                case "HELP":
-                    sendHelp();
-                    break;
-                case "CREATE_PLAYER":
-                    crearJugador();
-                    break;
-                case "USE_PLAYER":
+                case "HELP" -> sendHelp();
+                case "CREATE_PLAYER" -> crearJugador();
+                case "USE_PLAYER" -> {
                     exigirArgs(tokens, 2);
                     asignarJugadorExistente(parseInt(tokens[1], "playerId"));
-                    break;
-                case "CREATE_GAME":
+                }
+                case "CREATE_GAME" -> {
                     exigirJugadorConectado();
                     crearPartido();
-                    break;
-                case "JOIN_GAME":
+                }
+                case "JOIN_GAME" -> {
                     exigirJugadorConectado();
                     exigirArgs(tokens, 2);
                     unirsePartido(parseInt(tokens[1], "gameId"));
-                    break;
-                case "LIST_GAMES":
-                    listarPartidos();
-                    break;
-                case "PLACE_SHIP":
+                }
+                case "LIST_GAMES" -> listarPartidos();
+                case "PLACE_SHIP" -> {
                     exigirJugadorConectado();
                     exigirArgs(tokens, 2);
                     colocarBarco(tokens);
-                    break;
-                case "SHOOT":
+                }
+                case "SHOOT" -> {
                     exigirJugadorConectado();
                     exigirArgs(tokens, 4);
                     disparar(tokens);
-                    break;
-                case "QUIT":
+                }
+                case "QUIT" -> {
                     sendLine("BYE");
                     active = false;
-                    break;
-                default:
-                    sendError("Unknown command: " + command);
+                }
+                default -> sendError("Unknown command: " + command);
             }
         }
 
@@ -338,6 +331,7 @@ public class TcpServer {
             try {
                 socket.close();
             } catch (IOException ignored) {
+                // Intentionally ignored: cleanup on disconnect
             }
         }
     }
