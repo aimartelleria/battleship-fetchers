@@ -3,15 +3,12 @@ package software.sebastian.mondragon.battleship.service;
 import software.sebastian.mondragon.battleship.model.*;
 import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
 
 public class GameService {
     private final InMemoryRepo repo;
-    private final Random rnd = new SecureRandom();
 
     // Proveedor de notificaciones (puede reemplazarse por websockets / eventos)
     public interface Notifier {
@@ -66,7 +63,7 @@ public class GameService {
         if (p.getJugador1Id() != null && p.getJugador2Id() != null && p.getEstado() == EstadoPartido.ESPERANDO_JUGADORES) {
             p.setEstado(EstadoPartido.EN_CURSO);
             // elegir aleatoriamente quien empieza
-            int primero = rnd.nextBoolean() ? p.getJugador1Id() : p.getJugador2Id();
+            int primero = p.getJugador1Id();
             p.setTurnoJugadorId(primero);
             notifier.notifyJugador(p.getJugador1Id(), "Partida " + p.getId() + " iniciada. Turno de: " + primero);
             notifier.notifyJugador(p.getJugador2Id(), "Partida " + p.getId() + " iniciada. Turno de: " + primero);

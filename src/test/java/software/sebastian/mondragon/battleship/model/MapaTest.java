@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MapaTest {
@@ -86,5 +87,26 @@ class MapaTest {
         mapa.crearBarco(posicion);
 
         assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posicion));
+    }
+
+    @Test
+    void crearBarcoConListaVaciaLanzaExcepcion() {
+        Mapa mapa = crearMapa();
+        List<int[]> vacia = List.of();
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(vacia));
+    }
+
+    @Test
+    void crearBarcoConCoordenadaMalFormadaLanzaExcepcion() {
+        Mapa mapa = crearMapa();
+        List<int[]> posiciones = Arrays.asList(new int[]{0});
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posiciones));
+    }
+
+    @Test
+    void gettersDevuelvenDimensionesConfiguradas() {
+        Mapa mapa = new Mapa(42, 7, 9);
+        assertEquals(7, mapa.getRows());
+        assertEquals(9, mapa.getCols());
     }
 }

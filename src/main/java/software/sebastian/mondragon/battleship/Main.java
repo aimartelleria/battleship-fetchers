@@ -55,6 +55,10 @@ public class Main {
     }
 
     private static void startServer(int port) throws IOException {
+        startServer(port, new CountDownLatch(1));
+    }
+
+    static void startServer(int port, CountDownLatch latch) throws IOException {
         TcpServer server = new TcpServer(port);
         server.start();
         LOGGER.log(Level.INFO, "Servidor TCP escuchando en el puerto {0}. Presiona Ctrl+C para detenerlo.", port);
@@ -64,7 +68,6 @@ public class Main {
             server.stop();
         }));
 
-        CountDownLatch latch = new CountDownLatch(1);
         try {
             latch.await();
         } catch (InterruptedException ex) {

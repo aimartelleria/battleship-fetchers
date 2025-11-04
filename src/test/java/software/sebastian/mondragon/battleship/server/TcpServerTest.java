@@ -115,6 +115,109 @@ class TcpServerTest {
         }
     }
 
+    @Test
+    void unknownCommandEmiteError() throws Exception {
+        try (ClientConnection client = connectAndGreet()) {
+            client.send("DESCONOCIDO");
+            String error = client.awaitStartsWith("ERROR ");
+            assertTrue(error.contains("Unknown command: DESCONOCIDO"), error);
+        }
+    }
+
+    @Test
+    void comandoRequiereJugadorAntesDeAccion() throws Exception {
+        try (ClientConnection client = connectAndGreet()) {
+            client.send("CREATE_GAME");
+            String error = client.awaitStartsWith("ERROR ");
+            assertTrue(error.contains("Debe crear o seleccionar un jugador primero."));
+        }
+    }
+
+    @Test
+    void quitCommandFinalizaSesion() throws Exception {
+        try (ClientConnection client = connectAndGreet()) {
+            client.send("QUIT");
+            assertEquals("BYE", client.awaitExact("BYE"));
+        }
+    }
+
+    @Test
+    void placeShipSinArgumentosFalla() throws Exception {
+        try (ClientConnection client = connectAndGreet()) {
+            createPlayer(client);
+            client.send("PLACE_SHIP");
+            String error = client.awaitStartsWith("ERROR ");
+            assertTrue(error.contains("Argumentos insuficientes"), error);
+        }
+    }
+
+    @Test
+    void placeShipFormatoIncorrectoFalla() throws Exception {
+        try (ClientConnection client = connectAndGreet()) {
+            createPlayer(client);
+            client.send("PLACE_SHIP 5");
+            String error = client.awaitStartsWith("ERROR ");
+            assertTrue(error.contains("Formato inv"), error);
+        }
+    }
+
+    @Test
+    void shootCommandExitosoDevuelveResultado() throws Exception {
+        try (MatchContext match = startMatch()) {
+            match.host.send("PLACE_SHIP 0,0 0,1");
+            match.guest.send("PLACE_SHIP 5,5 5,6");
+            match.host.awaitStartsWith("SHIP ");
+            match.guest.awaitStartsWith("SHIP ");
+
+            match.host.send("SHOOT " + match.gameId + " 5 5");
+            String resultLine = match.host.awaitStartsWith("RESULT ");
+
+            assertTrue(resultLine.contains("AGUA") || resultLine.contains("TOCADO") || resultLine.contains("HUNDIDO"));
+        }
+    }
+
+    @Test
+    void shootCommandSinArgumentosSuficientesFalla() throws Exception {
+        try (MatchContext match = startMatch()) {
+            match.host.send("SHOOT " + match.gameId + " 3");
+            String error = match.host.awaitStartsWith("ERROR ");
+            assertTrue(error.contains("Argumentos insuficientes"), error);
+        }
+    }
+
+    @Test
+    void shootCommandConArgumentosNoNumericosFalla() throws Exception {
+        try (MatchContext match = startMatch()) {
+            match.host.send("SHOOT " + match.gameId + " fila col");
+            String error = match.host.awaitStartsWith("ERROR ");
+            assertTrue(error.contains("Valor inv"), error);
+        }
+    }
+
+    @Test
+    void usePlayerReemplazaSesionExistente() throws Exception {
+        try (ClientConnection original = connectAndGreet();
+             ClientConnection replacement = connectAndGreet()) {
+            int playerId = createPlayer(original);
+            replacement.send("USE_PLAYER " + playerId);
+            String notify = original.awaitStartsWith("NOTIFY ");
+            assertTrue(notify.contains("Sesi"), notify);
+            String playerLine = replacement.awaitStartsWith("PLAYER ");
+            assertEquals("PLAYER " + playerId, playerLine);
+        }
+    }
+
+    @Test
+    void createPlayerDosVecesReasignaJugadorActual() throws Exception {
+        try (ClientConnection client = connectAndGreet()) {
+            int first = createPlayer(client);
+            assertEquals(1, first);
+
+            int second = createPlayer(client);
+            assertEquals(2, second);
+        }
+    }
+
     private ClientConnection connectAndGreet() throws Exception {
         ClientConnection client = new ClientConnection(port);
         assertEquals("WELCOME Battleship TCP", client.awaitExact("WELCOME Battleship TCP"));
