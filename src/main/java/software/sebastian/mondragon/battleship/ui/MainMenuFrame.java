@@ -2,10 +2,9 @@ package software.sebastian.mondragon.battleship.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 
 // ----------------------------------
-//  MAIN MENU FRAME
+//  MAIN MENU FRAME (versión testeable)
 // ----------------------------------
 public class MainMenuFrame extends JFrame {
 
@@ -25,6 +24,11 @@ public class MainMenuFrame extends JFrame {
         JButton unirseBtn = new JButton("Unirse a partida");
         JButton salirBtn = new JButton("Salir");
 
+        // 🔹 Añadimos nombres internos para AssertJ Swing
+        crearBtn.setName("crearBtn");
+        unirseBtn.setName("unirseBtn");
+        salirBtn.setName("salirBtn");
+
         buttonPanel.add(crearBtn);
         buttonPanel.add(unirseBtn);
         buttonPanel.add(salirBtn);
@@ -35,12 +39,18 @@ public class MainMenuFrame extends JFrame {
             dispose();
             new GameHostFrame();
         });
+
         unirseBtn.addActionListener(e -> {
             dispose();
             new GameJoinFrame();
         });
-        salirBtn.addActionListener(e -> System.exit(0));
+
+        salirBtn.addActionListener(e -> onExit());
 
         setVisible(true);
+    }
+
+    protected void onExit() {
+        System.exit(0);
     }
 }
