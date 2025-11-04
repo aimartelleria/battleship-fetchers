@@ -8,7 +8,7 @@ public class Partido {
     private Integer jugador2Id;
     private Integer turnoJugadorId; // id del jugador que tiene el turno
     private EstadoPartido estado;
-
+    
     public Partido(int id) {
         this.id = id;
         this.estado = EstadoPartido.ESPERANDO_JUGADORES;

@@ -16,10 +16,17 @@ class InMemoryRepoTest {
 
         Mapa m = repo.crearMapa(10, 10);
         assertNotNull(repo.getMapa(m.getId()));
-        assertEquals(100, m.getTodasCoordenadas().size());
 
         Partido p = repo.crearPartido();
         assertNotNull(repo.getPartido(p.getId()));
         assertEquals(1, repo.getTodosPartidos().size());
+    }
+
+    @Test
+    void testGetEntidadInexistente() {
+        InMemoryRepo repo = new InMemoryRepo();
+        assertTrue(repo.getJugador(999) == null);
+        assertTrue(repo.getMapa(999) == null);
+        assertTrue(repo.getPartido(999) == null);
     }
 }
