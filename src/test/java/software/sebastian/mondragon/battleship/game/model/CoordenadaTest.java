@@ -1,6 +1,7 @@
-package software.sebastian.mondragon.battleship.model;
+package software.sebastian.mondragon.battleship.game.model;
 
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CoordenadaTest {

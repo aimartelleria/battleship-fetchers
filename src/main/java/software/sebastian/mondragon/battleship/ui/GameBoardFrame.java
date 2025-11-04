@@ -14,7 +14,7 @@ public class GameBoardFrame extends JFrame {
     private boolean horizontal = true; // dirección del barco
     private JButton rotateBtn;
 
-    public GameBoardFrame(boolean isHost) {
+    public GameBoardFrame() {
         setTitle("Battleship - Tablero de Juego");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1000, 600);
@@ -76,7 +76,8 @@ public class GameBoardFrame extends JFrame {
                 grid[i][j] = cell;
 
                 if (own) {
-                    int row = i, col = j;
+                    int row = i;
+                    int col = j;
                     cell.addMouseListener(new MouseAdapter() {
                         @Override
                         public void mouseReleased(MouseEvent e) {
@@ -170,40 +171,59 @@ public class GameBoardFrame extends JFrame {
     private void placeShip(int startRow, int startCol) {
         if (selectedShip == null) return;
 
-        // Validar que el barco quepa dentro del tablero
-        if (horizontal) {
-            if (startCol + selectedShipSize > 10) {
-                JOptionPane.showMessageDialog(this, "El barco no cabe horizontalmente aquí.");
-                return;
-            }
-            for (int i = 0; i < selectedShipSize; i++) {
-                if (!ownGrid[startRow][startCol + i].isEnabled()) {
-                    JOptionPane.showMessageDialog(this, "Ya hay un barco en esa posición.");
-                    return;
-                }
-            }
-            for (int i = 0; i < selectedShipSize; i++) {
-                ownGrid[startRow][startCol + i].setBackground(Color.GRAY);
-                ownGrid[startRow][startCol + i].setEnabled(false);
-            }
-        } else {
-            if (startRow + selectedShipSize > 10) {
-                JOptionPane.showMessageDialog(this, "El barco no cabe verticalmente aquí.");
-                return;
-            }
-            for (int i = 0; i < selectedShipSize; i++) {
-                if (!ownGrid[startRow + i][startCol].isEnabled()) {
-                    JOptionPane.showMessageDialog(this, "Ya hay un barco en esa posición.");
-                    return;
-                }
-            }
-            for (int i = 0; i < selectedShipSize; i++) {
-                ownGrid[startRow + i][startCol].setBackground(Color.GRAY);
-                ownGrid[startRow + i][startCol].setEnabled(false);
-            }
+        int rowStep = horizontal ? 0 : 1;
+        int colStep = horizontal ? 1 : 0;
+
+        if (!isPlacementWithinBounds(startRow, startCol, rowStep, colStep)) {
+            String orientation = horizontal ? "horizontalmente" : "verticalmente";
+            JOptionPane.showMessageDialog(this, "El barco no cabe " + orientation + " aquí.");
+            return;
         }
 
-        // Desactivar el barco ya usado
+        if (hasOverlap(startRow, startCol, rowStep, colStep)) {
+            JOptionPane.showMessageDialog(this, "Ya hay un barco en esa posición.");
+            return;
+        }
+
+        paintShip(startRow, startCol, rowStep, colStep);
+        deactivateSelectedShip();
+    }
+
+    private boolean isPlacementWithinBounds(int startRow, int startCol, int rowStep, int colStep) {
+        int endRow = startRow + rowStep * (selectedShipSize - 1);
+        int endCol = startCol + colStep * (selectedShipSize - 1);
+        return isInsideGrid(startRow, startCol) && isInsideGrid(endRow, endCol);
+    }
+
+    private boolean isInsideGrid(int row, int col) {
+        return row >= 0 && row < ownGrid.length && col >= 0 && col < ownGrid[0].length;
+    }
+
+    private boolean hasOverlap(int startRow, int startCol, int rowStep, int colStep) {
+        int row = startRow;
+        int col = startCol;
+        for (int i = 0; i < selectedShipSize; i++) {
+            if (!ownGrid[row][col].isEnabled()) {
+                return true;
+            }
+            row += rowStep;
+            col += colStep;
+        }
+        return false;
+    }
+
+    private void paintShip(int startRow, int startCol, int rowStep, int colStep) {
+        int row = startRow;
+        int col = startCol;
+        for (int i = 0; i < selectedShipSize; i++) {
+            ownGrid[row][col].setBackground(Color.GRAY);
+            ownGrid[row][col].setEnabled(false);
+            row += rowStep;
+            col += colStep;
+        }
+    }
+
+    private void deactivateSelectedShip() {
         selectedShip.setEnabled(false);
         selectedShip.setOpaque(false);
         selectedShip = null;

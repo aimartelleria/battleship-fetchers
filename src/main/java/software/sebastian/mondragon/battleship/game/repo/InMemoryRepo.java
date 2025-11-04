@@ -1,12 +1,12 @@
-package software.sebastian.mondragon.battleship.repo;
+package software.sebastian.mondragon.battleship.game.repo;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import software.sebastian.mondragon.battleship.model.Jugador;
-import software.sebastian.mondragon.battleship.model.Mapa;
-import software.sebastian.mondragon.battleship.model.Partido;
+import software.sebastian.mondragon.battleship.game.model.Jugador;
+import software.sebastian.mondragon.battleship.game.model.Mapa;
+import software.sebastian.mondragon.battleship.game.model.Partido;
 
 public class InMemoryRepo {
     private final AtomicInteger partidoGen = new AtomicInteger(1);

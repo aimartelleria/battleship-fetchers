@@ -1,4 +1,4 @@
-package software.sebastian.mondragon.battleship.model;
+package software.sebastian.mondragon.battleship.game.model;
 
 import java.util.Optional;
 

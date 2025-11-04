@@ -2,7 +2,6 @@ package software.sebastian.mondragon.battleship.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 
 // ----------------------------------
 //  GAME JOIN FRAME
@@ -31,7 +30,7 @@ public class GameJoinFrame extends JFrame {
         connectBtn.addActionListener(e -> {
             JOptionPane.showMessageDialog(this, "Conectado exitosamente a " + codeField.getText());
             dispose();
-            new GameBoardFrame(false);
+            new GameBoardFrame();
         });
 
         setVisible(true);

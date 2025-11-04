@@ -1,10 +1,11 @@
-package software.sebastian.mondragon.battleship.service;
+package software.sebastian.mondragon.battleship.game.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-import software.sebastian.mondragon.battleship.model.*;
-import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
+
+import software.sebastian.mondragon.battleship.game.model.*;
+import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

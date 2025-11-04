@@ -1,4 +1,4 @@
-package software.sebastian.mondragon.battleship.server;
+package software.sebastian.mondragon.battleship.game.server;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-import software.sebastian.mondragon.battleship.service.GameService;
+import software.sebastian.mondragon.battleship.game.service.GameService;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -196,7 +197,7 @@ class TcpServerInternalTest {
     @Test
     void asociarJugadorReemplazaYSuprimeAnterior() throws Exception {
         TcpServer server = new TcpServer(0);
-        Class<?> handlerClass = Class.forName("software.sebastian.mondragon.battleship.server.TcpServer$ClientHandler");
+        Class<?> handlerClass = Class.forName("software.sebastian.mondragon.battleship.game.server.TcpServer$ClientHandler");
         Method asociar = handlerClass.getDeclaredMethod("asociarJugador", int.class);
         asociar.setAccessible(true);
 
@@ -241,7 +242,7 @@ class TcpServerInternalTest {
     }
 
     private static Object newClientHandler(TcpServer server, Socket socket) throws Exception {
-        Class<?> handlerClass = Class.forName("software.sebastian.mondragon.battleship.server.TcpServer$ClientHandler");
+        Class<?> handlerClass = Class.forName("software.sebastian.mondragon.battleship.game.server.TcpServer$ClientHandler");
         Constructor<?> constructor = handlerClass.getDeclaredConstructor(TcpServer.class, Socket.class);
         constructor.setAccessible(true);
         return constructor.newInstance(server, socket);

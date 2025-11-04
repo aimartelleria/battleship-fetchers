@@ -1,7 +1,7 @@
-package software.sebastian.mondragon.battleship.service;
+package software.sebastian.mondragon.battleship.game.service;
 
-import software.sebastian.mondragon.battleship.model.*;
-import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
+import software.sebastian.mondragon.battleship.game.model.*;
+import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
 
 import java.util.List;
 import java.util.Objects;

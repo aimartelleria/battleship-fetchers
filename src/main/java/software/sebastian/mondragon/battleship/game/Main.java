@@ -1,14 +1,13 @@
-package software.sebastian.mondragon.battleship;
+package software.sebastian.mondragon.battleship.game;
 
-import software.sebastian.mondragon.battleship.model.Jugador;
-import software.sebastian.mondragon.battleship.model.Mapa;
-import software.sebastian.mondragon.battleship.model.Partido;
-import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
-import software.sebastian.mondragon.battleship.server.TcpServer;
-import software.sebastian.mondragon.battleship.service.GameService;
-import software.sebastian.mondragon.battleship.service.GameService.Notifier;
-import software.sebastian.mondragon.battleship.service.ResultadoDisparo;
-
+import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
+import software.sebastian.mondragon.battleship.game.model.Jugador;
+import software.sebastian.mondragon.battleship.game.model.Mapa;
+import software.sebastian.mondragon.battleship.game.model.Partido;
+import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
+import software.sebastian.mondragon.battleship.game.server.TcpServer;
+import software.sebastian.mondragon.battleship.game.service.GameService;
+import software.sebastian.mondragon.battleship.game.service.GameService.Notifier;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;

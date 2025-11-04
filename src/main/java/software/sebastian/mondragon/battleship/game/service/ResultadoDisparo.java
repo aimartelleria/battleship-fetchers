@@ -1,4 +1,4 @@
-package software.sebastian.mondragon.battleship.service;
+package software.sebastian.mondragon.battleship.game.service;
 
 public enum ResultadoDisparo {
     AGUA,

@@ -1,11 +1,12 @@
-package software.sebastian.mondragon.battleship;
+package software.sebastian.mondragon.battleship.game;
 
 import org.junit.jupiter.api.Test;
-import software.sebastian.mondragon.battleship.model.Jugador;
-import software.sebastian.mondragon.battleship.model.Mapa;
-import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
-import software.sebastian.mondragon.battleship.service.GameService;
-import software.sebastian.mondragon.battleship.service.ResultadoDisparo;
+
+import software.sebastian.mondragon.battleship.game.model.Jugador;
+import software.sebastian.mondragon.battleship.game.model.Mapa;
+import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
+import software.sebastian.mondragon.battleship.game.service.GameService;
+import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -311,10 +312,6 @@ class MainTest {
         @Override
         public void close() {
             messages.clear();
-        }
-
-        boolean contains(String text) {
-            return messages.stream().anyMatch(msg -> msg.contains(text));
         }
 
         List<String> snapshot() {

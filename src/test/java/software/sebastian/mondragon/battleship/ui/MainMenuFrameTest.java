@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Test funcional con interacción real sobre MainMenuFrame.
  * Usa AssertJ Swing + SystemLambda (sin SecurityManager, compatible con Java 17+)
  */
-public class MainMenuFrameTest {
+class MainMenuFrameTest {
 
     private FrameFixture window;
 
@@ -84,28 +84,4 @@ public class MainMenuFrameTest {
         assertTrue(opened, "GameJoinFrame debería abrirse al pulsar Unirse a partida");
     }
 
-    /*@Test   
-    @DisplayName("Click en 'Salir' ejecuta onExit()")
-    void shouldInvokeOnExitWhenClickExit() throws Exception {
-        // bandera para verificar que se llamó a onExit()
-        final boolean[] exitCalled = {false};
-
-        // creamos una subclase que sobreescribe onExit()
-        MainMenuFrame frame = GuiActionRunner.execute(() -> new MainMenuFrame() {
-            @Override
-            protected void onExit() {
-                exitCalled[0] = true; // en lugar de System.exit(0)
-            }
-        });
-
-        // mostramos ese frame y creamos una nueva fixture
-        if (window != null) window.cleanUp();
-        window = new FrameFixture(frame);
-        window.show();
-
-        // simulamos click real
-        SwingUtilities.invokeAndWait(() -> window.button("salirBtn").click());
-
-        assertTrue(exitCalled[0], "onExit() debería haberse llamado al pulsar 'Salir'");
-    }*/
 }

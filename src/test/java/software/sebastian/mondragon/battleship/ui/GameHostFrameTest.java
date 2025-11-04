@@ -9,7 +9,7 @@ import java.awt.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class GameHostFrameTest {
+class GameHostFrameTest {
 
     private FrameFixture window;
 
@@ -37,36 +37,4 @@ public class GameHostFrameTest {
         window.button().requireText("Cancelar / Volver");
     }
 
-    /*@Test
-    @DisplayName("Click en Cancelar/Volver abre MainMenuFrame")
-    void shouldReturnToMainMenuOnCancel() throws Exception {
-        SwingUtilities.invokeAndWait(() -> window.button().click());
-
-        boolean opened = false;
-        for (Frame f : Frame.getFrames()) {
-            if (f instanceof MainMenuFrame && f.isVisible()) {
-                opened = true;
-                f.dispose();
-                break;
-            }
-        }
-        assertTrue(opened, "Debería abrirse MainMenuFrame al pulsar Cancelar / Volver");
-    }*/
-
-    /*@Test
-    @DisplayName("Simula que el Timer crea un GameBoardFrame tras 3 segundos")
-    void shouldOpenGameBoardFrameAfterTimer() throws Exception {
-        // Espera algo más de 3 segundos para que se dispare el Timer
-        Thread.sleep(3500);
-
-        boolean opened = false;
-        for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameBoardFrame && f.isVisible()) {
-                opened = true;
-                f.dispose();
-                break;
-            }
-        }
-        assertTrue(opened, "GameBoardFrame debería abrirse tras la conexión simulada");
-    }*/
 }

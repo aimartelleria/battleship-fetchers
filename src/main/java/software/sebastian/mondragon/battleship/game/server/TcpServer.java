@@ -1,11 +1,11 @@
-package software.sebastian.mondragon.battleship.server;
+package software.sebastian.mondragon.battleship.game.server;
 
-import software.sebastian.mondragon.battleship.model.Barco;
-import software.sebastian.mondragon.battleship.model.Jugador;
-import software.sebastian.mondragon.battleship.model.Partido;
-import software.sebastian.mondragon.battleship.repo.InMemoryRepo;
-import software.sebastian.mondragon.battleship.service.GameService;
-import software.sebastian.mondragon.battleship.service.ResultadoDisparo;
+import software.sebastian.mondragon.battleship.game.model.Barco;
+import software.sebastian.mondragon.battleship.game.model.Jugador;
+import software.sebastian.mondragon.battleship.game.model.Partido;
+import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
+import software.sebastian.mondragon.battleship.game.service.GameService;
+import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
 
 import java.io.*;
 import java.net.*;

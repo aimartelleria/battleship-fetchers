@@ -2,7 +2,6 @@ package software.sebastian.mondragon.battleship.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 
 // ----------------------------------
 //  GAME HOST FRAME
@@ -40,7 +39,7 @@ public class GameHostFrame extends JFrame {
         Timer timer = new Timer(3000, e -> {
             JOptionPane.showMessageDialog(this, "Jugador conectado!");
             dispose();
-            new GameBoardFrame(true);
+            new GameBoardFrame();
         });
         timer.setRepeats(false);
         timer.start();

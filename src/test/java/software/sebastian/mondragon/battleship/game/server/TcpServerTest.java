@@ -1,4 +1,4 @@
-package software.sebastian.mondragon.battleship.server;
+package software.sebastian.mondragon.battleship.game.server;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -263,7 +263,8 @@ class TcpServerTest {
         return new MatchContext(host, guest, hostId, guestId, gameId, createdNotify, hostStart, hostJoin, guestStart, guestJoin, joinLine);
     }
 
-    private static final class MatchContext implements AutoCloseable {
+    
+    static final class MatchContext implements AutoCloseable {
         final ClientConnection host;
         final ClientConnection guest;
         final int hostId;

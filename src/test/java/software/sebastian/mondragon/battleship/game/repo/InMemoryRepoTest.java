@@ -1,7 +1,9 @@
-package software.sebastian.mondragon.battleship.repo;
+package software.sebastian.mondragon.battleship.game.repo;
 
-import software.sebastian.mondragon.battleship.model.*;
 import org.junit.jupiter.api.Test;
+
+import software.sebastian.mondragon.battleship.game.model.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class InMemoryRepoTest {
@@ -25,8 +27,8 @@ class InMemoryRepoTest {
     @Test
     void testGetEntidadInexistente() {
         InMemoryRepo repo = new InMemoryRepo();
-        assertTrue(repo.getJugador(999) == null);
-        assertTrue(repo.getMapa(999) == null);
-        assertTrue(repo.getPartido(999) == null);
+        assertNull(repo.getJugador(999));
+        assertNull(repo.getMapa(999));
+        assertNull(repo.getPartido(999));
     }
 }

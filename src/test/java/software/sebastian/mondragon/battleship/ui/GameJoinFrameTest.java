@@ -9,7 +9,7 @@ import java.awt.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class GameJoinFrameTest {
+class GameJoinFrameTest {
 
     private FrameFixture window;
 
@@ -35,23 +35,4 @@ public class GameJoinFrameTest {
         window.textBox().requireVisible();
         window.button().requireText("Conectar");
     }
-
-    /*@Test
-    @DisplayName("Click en Conectar muestra mensaje y abre GameBoardFrame")
-    void shouldOpenGameBoardFrameOnConnect() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            window.textBox().setText("12345");
-            window.button().click();
-        });
-
-        boolean opened = false;
-        for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameBoardFrame && f.isVisible()) {
-                opened = true;
-                f.dispose();
-                break;
-            }
-        }
-        assertTrue(opened, "GameBoardFrame debería abrirse al conectarse");
-    }*/
 }
