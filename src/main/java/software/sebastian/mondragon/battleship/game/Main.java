@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 
 public class Main {
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
+    private static final String DEFAULT_HOST = "localhost";
     private static final int DEFAULT_PORT = 9090;
 
     public static void main(String[] args) {
@@ -24,13 +25,13 @@ public class Main {
 
     private static void execute(String[] args) throws IOException {
         if (args.length == 0) {
-            startClient("localhost", DEFAULT_PORT);
+            startClient(DEFAULT_HOST, DEFAULT_PORT);
             return;
         }
 
         String mode = args[0];
         if ("client".equalsIgnoreCase(mode)) {
-            String host = args.length > 1 ? args[1] : "localhost";
+            String host = args.length > 1 ? args[1] : DEFAULT_HOST;
             int port = args.length > 2 ? parsePort(args[2]) : DEFAULT_PORT;
             startClient(host, port);
             return;
@@ -88,7 +89,7 @@ public class Main {
     }
 
     private static void startClient(String host, int port) {
-        final String sanitizedHost = (host == null || host.isBlank()) ? "localhost" : host;
+        final String sanitizedHost = (host == null || host.isBlank()) ? DEFAULT_HOST : host;
         LOGGER.log(Level.INFO, "Iniciando cliente Battleship contra {0}:{1}",
                 new Object[]{sanitizedHost, port});
         SwingUtilities.invokeLater(() ->
