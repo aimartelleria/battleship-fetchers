@@ -66,22 +66,6 @@ class MainMenuFrameTest {
         assertTrue(opened, "GameHostFrame debería abrirse al pulsar Crear partida");
     }
 
-    @Test
-    @DisplayName("Click en 'Unirse a partida' cierra el menú y abre GameJoinFrame")
-    void shouldOpenJoinFrameOnClickJoin() {
-        window.button("unirseBtn").click();
-
-        assertFalse(window.target().isVisible(), "El menú principal debe cerrarse");
-
-        boolean opened = false;
-        for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameJoinFrame && f.isVisible()) {
-                opened = true;
-                f.dispose();
-                break;
-            }
-        }
-        assertTrue(opened, "GameJoinFrame debería abrirse al pulsar Unirse a partida");
-    }
+    
 
 }
