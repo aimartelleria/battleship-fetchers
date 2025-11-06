@@ -1,11 +1,12 @@
 package software.sebastian.mondragon.battleship.ui;
 
-import org.assertj.swing.core.matcher.JButtonMatcher;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
 import org.assertj.swing.fixture.FrameFixture;
 import org.assertj.swing.fixture.JOptionPaneFixture;
 import org.junit.jupiter.api.*;
+import software.sebastian.mondragon.battleship.game.client.ClientSession;
+import software.sebastian.mondragon.battleship.ui.support.StubClientSession;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,11 +19,13 @@ class GameBoardFrameTest {
 
     private FrameFixture window;
     private JButton[][] ownGrid;
+    private ClientSession sessionStub;
 
     @BeforeEach
     void setUp() {
         System.setProperty("java.awt.headless", "false");
-        GameBoardFrame frame = GuiActionRunner.execute(GameBoardFrame::new);
+        sessionStub = new StubClientSession();
+        GameBoardFrame frame = GuiActionRunner.execute(() -> new GameBoardFrame(sessionStub, StubClientSession::new));
         window = new FrameFixture(frame);
         window.show();
         ownGrid = extractOwnGrid(frame);
@@ -39,16 +42,16 @@ class GameBoardFrameTest {
     void shouldInitializeUI() {
         JFrame frame = (JFrame) window.target();
         assertEquals("Battleship - Tablero de Juego", frame.getTitle());
-        window.button(JButtonMatcher.withText("Listo ✔")).requireVisible();
-        window.button(JButtonMatcher.withText("Dirección: Horizontal")).requireVisible();
+        window.button("readyButton").requireVisible();
+        window.button("rotateButton").requireVisible();
+        window.button("exitButton").requireVisible();
+        window.label("statusLabel").requireVisible();
     }
 
     @Test
     @DisplayName("Al pulsar el botón de dirección cambia entre Horizontal y Vertical")
     void shouldToggleDirection() throws Exception {
-        JButton rotateBtn = window.button(JButtonMatcher.withText("Dirección: Horizontal")).target();
-        assertNotNull(rotateBtn);
-
+        JButton rotateBtn = window.button("rotateButton").target();
         SwingUtilities.invokeAndWait(rotateBtn::doClick);
         assertTrue(rotateBtn.getText().contains("Vertical"), "Debe cambiar a Vertical");
 
@@ -59,8 +62,8 @@ class GameBoardFrameTest {
     @Test
     @DisplayName("Al pulsar el botón Listo cambia el estado y se desactiva")
     void shouldSetReadyStatus() throws Exception {
-        JButton readyBtn = window.button(JButtonMatcher.withText("Listo ✔")).target();
-        JLabel statusLabel = (JLabel) TestUtils.findComponentByText(window.target(), "Estado: Esperando al otro jugador...");
+        JButton readyBtn = window.button("readyButton").target();
+        JLabel statusLabel = window.label("statusLabel").target();
 
         assertNotNull(readyBtn);
         assertNotNull(statusLabel);
@@ -112,7 +115,7 @@ class GameBoardFrameTest {
     @Test
     @DisplayName("Permite colocar un barco vertical cuando se rota la dirección")
     void shouldPlaceShipVerticallyAfterRotation() {
-        JButton rotateBtn = window.button(JButtonMatcher.withText("Dirección: Horizontal")).target();
+        JButton rotateBtn = window.button("rotateButton").target();
         SwingUtilities.invokeLater(rotateBtn::doClick);
         window.robot().waitForIdle();
 

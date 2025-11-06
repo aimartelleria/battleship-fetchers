@@ -3,25 +3,26 @@ package software.sebastian.mondragon.battleship.ui;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.fixture.FrameFixture;
 import org.junit.jupiter.api.*;
+import software.sebastian.mondragon.battleship.game.client.ClientSession;
+import software.sebastian.mondragon.battleship.ui.support.StubClientSession;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test funcional con interacción real sobre MainMenuFrame.
- * Usa AssertJ Swing + SystemLambda (sin SecurityManager, compatible con Java 17+)
- */
 class MainMenuFrameTest {
 
     private FrameFixture window;
+    private Supplier<ClientSession> sessionSupplier;
 
     @BeforeEach
     void setUp() {
         System.setProperty("java.awt.headless", "false"); // asegura modo gráfico
+        sessionSupplier = StubClientSession::new;
 
-        MainMenuFrame frame = GuiActionRunner.execute(MainMenuFrame::new);
+        MainMenuFrame frame = GuiActionRunner.execute(() -> new MainMenuFrame(sessionSupplier));
         window = new FrameFixture(frame);
         window.show(); // muestra el frame
     }
@@ -57,9 +58,9 @@ class MainMenuFrameTest {
 
         boolean opened = false;
         for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameHostFrame && f.isVisible()) {
+            if (f instanceof GameHostFrame hostFrame && hostFrame.isVisible()) {
                 opened = true;
-                f.dispose();
+                hostFrame.dispose();
                 break;
             }
         }
@@ -75,9 +76,9 @@ class MainMenuFrameTest {
 
         boolean opened = false;
         for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameJoinFrame && f.isVisible()) {
+            if (f instanceof GameJoinFrame joinFrame && joinFrame.isVisible()) {
                 opened = true;
-                f.dispose();
+                joinFrame.dispose();
                 break;
             }
         }
@@ -85,3 +86,4 @@ class MainMenuFrameTest {
     }
 
 }
+
