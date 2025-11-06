@@ -2,6 +2,8 @@ package software.sebastian.mondragon.battleship.game;
 
 import org.junit.jupiter.api.Test;
 
+import javax.swing.SwingUtilities;
+import java.awt.Frame;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -26,7 +28,7 @@ class MainTest {
     @Test
     void testMainLanzaClientePorDefecto() throws Exception {
         List<String> logs = captureMainLogs(Level.INFO,
-                () -> runWithHeadless(() -> Main.main(new String[0])));
+                () -> runWithUiCleanup(() -> Main.main(new String[0])));
         assertTrue(logs.stream().anyMatch(msg -> msg.contains("Iniciando cliente Battleship contra")),
                 "Se esperaba log indicando el arranque del cliente");
     }
@@ -200,11 +202,18 @@ class MainTest {
         throw new AssertionError("El hilo del servidor no entro en estado WAITING");
     }
 
-    private static void runWithHeadless(ThrowingRunnable action) throws Exception {
+    private static void runWithUiCleanup(ThrowingRunnable action) throws Exception {
         String previous = System.getProperty("java.awt.headless");
-        System.setProperty("java.awt.headless", "true");
+        System.setProperty("java.awt.headless", "false");
         try {
             action.run();
+            SwingUtilities.invokeAndWait(() -> {
+                for (Frame frame : Frame.getFrames()) {
+                    if (frame.isDisplayable()) {
+                        frame.dispose();
+                    }
+                }
+            });
         } finally {
             if (previous != null) {
                 System.setProperty("java.awt.headless", previous);
