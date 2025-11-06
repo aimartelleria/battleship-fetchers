@@ -21,6 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -39,6 +40,7 @@ import java.util.function.Consumer;
 public class TcpClient implements Closeable {
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration DEFAULT_HANDSHAKE_TIMEOUT = Duration.ofMillis(500);
+    private static final Consumer<String> NOOP_NOTIFICATION = message -> { };
 
     private final String host;
     private final int port;
@@ -48,13 +50,13 @@ public class TcpClient implements Closeable {
     private final List<String> welcomeMessages = new CopyOnWriteArrayList<>();
     private final Object sendLock = new Object();
     private final AtomicBoolean connected = new AtomicBoolean(false);
+    private final AtomicReference<Consumer<String>> notificationListener = new AtomicReference<>(NOOP_NOTIFICATION);
+    private final AtomicBoolean listening = new AtomicBoolean(false);
 
-    private volatile Consumer<String> notificationListener = message -> { };
     private Socket socket;
     private BufferedReader reader;
     private PrintWriter writer;
     private Thread listenerThread;
-    private volatile boolean listening;
 
     public TcpClient(String host, int port) {
         this(host, port, DEFAULT_RESPONSE_TIMEOUT, DEFAULT_HANDSHAKE_TIMEOUT);
@@ -92,7 +94,7 @@ public class TcpClient implements Closeable {
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
         writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
 
-        listening = true;
+        listening.set(true);
         listenerThread = new Thread(this::listenLoop, "battleship-tcp-client-listener");
         listenerThread.setDaemon(true);
         listenerThread.start();
@@ -105,7 +107,7 @@ public class TcpClient implements Closeable {
      * Assigns a callback to receive asynchronous NOTIFY messages.
      */
     public void setNotificationListener(Consumer<String> listener) {
-        this.notificationListener = listener != null ? listener : message -> { };
+        notificationListener.set(listener != null ? listener : NOOP_NOTIFICATION);
     }
 
     /**
@@ -119,31 +121,31 @@ public class TcpClient implements Closeable {
         return connected.get();
     }
 
-    public int createPlayer() throws IOException, TcpClientException {
+    public int createPlayer() throws TcpClientException {
         TcpResponse response = sendCommand("CREATE_PLAYER");
         ensureType(response, "PLAYER");
         return parseInt(response.payload(), "player id");
     }
 
-    public int usePlayer(int playerId) throws IOException, TcpClientException {
+    public int usePlayer(int playerId) throws TcpClientException {
         TcpResponse response = sendCommand("USE_PLAYER " + playerId);
         ensureType(response, "PLAYER");
         return parseInt(response.payload(), "player id");
     }
 
-    public int createGame() throws IOException, TcpClientException {
+    public int createGame() throws TcpClientException {
         TcpResponse response = sendCommand("CREATE_GAME");
         ensureType(response, "GAME");
         return parseInt(response.payload(), "game id");
     }
 
-    public int joinGame(int gameId) throws IOException, TcpClientException {
+    public int joinGame(int gameId) throws TcpClientException {
         TcpResponse response = sendCommand("JOIN_GAME " + gameId);
         ensureType(response, "JOINED");
         return parseInt(response.payload(), "game id");
     }
 
-    public List<String> listGames() throws IOException, TcpClientException {
+    public List<String> listGames() throws TcpClientException {
         TcpResponse response = sendCommand("LIST_GAMES");
         ensureType(response, "GAMES");
         if (response.payload().isBlank()) {
@@ -157,7 +159,7 @@ public class TcpClient implements Closeable {
         return games;
     }
 
-    public ShipPlacementResult placeShip(List<int[]> coordinates) throws IOException, TcpClientException {
+    public ShipPlacementResult placeShip(List<int[]> coordinates) throws TcpClientException {
         if (coordinates == null || coordinates.isEmpty()) {
             throw new IllegalArgumentException("At least one coordinate is required");
         }
@@ -181,7 +183,7 @@ public class TcpClient implements Closeable {
         return new ShipPlacementResult(shipId, size);
     }
 
-    public ResultadoDisparo shoot(int gameId, int row, int col) throws IOException, TcpClientException {
+    public ResultadoDisparo shoot(int gameId, int row, int col) throws TcpClientException {
         TcpResponse response = sendCommand("SHOOT " + gameId + ' ' + row + ' ' + col);
         ensureType(response, "RESULT");
         try {
@@ -191,14 +193,14 @@ public class TcpClient implements Closeable {
         }
     }
 
-    public void quit() throws IOException, TcpClientException {
+    public void quit() throws TcpClientException {
         TcpResponse response = sendCommand("QUIT");
         ensureType(response, "BYE");
     }
 
     @Override
     public void close() {
-        listening = false;
+        listening.set(false);
         connected.set(false);
         if (listenerThread != null) {
             listenerThread.interrupt();
@@ -210,7 +212,7 @@ public class TcpClient implements Closeable {
         closeQuietly(socket);
     }
 
-    private TcpResponse sendCommand(String command) throws IOException, TcpClientException {
+    private TcpResponse sendCommand(String command) throws TcpClientException {
         if (!connected.get() || socket == null || socket.isClosed()) {
             throw new IllegalStateException("Client is not connected");
         }
@@ -275,22 +277,22 @@ public class TcpClient implements Closeable {
     private void listenLoop() {
         try {
             String line;
-            while (listening && (line = reader.readLine()) != null) {
+            while (listening.get() && (line = reader.readLine()) != null) {
                 if (line.isBlank()) {
                     continue;
                 }
                 if (line.startsWith("NOTIFY ")) {
-                    notificationListener.accept(line.substring("NOTIFY ".length()));
+                    notificationListener.get().accept(line.substring("NOTIFY ".length()));
                 } else {
-                    inbox.offer(line);
+                    enqueueInbox(line);
                 }
             }
         } catch (IOException ex) {
-            if (listening) {
-                inbox.offer("ERROR Connection lost: " + ex.getMessage());
+            if (listening.get()) {
+                enqueueInbox("ERROR Connection lost: " + ex.getMessage());
             }
         } finally {
-            listening = false;
+            listening.set(false);
             connected.set(false);
             closeQuietly(reader);
             if (writer != null) {
@@ -344,4 +346,10 @@ public class TcpClient implements Closeable {
     private record TcpResponse(String raw, String type, String payload) { }
 
     public record ShipPlacementResult(int shipId, int size) { }
+
+    private void enqueueInbox(String line) {
+        if (!inbox.offer(line)) {
+            throw new IllegalStateException("Client inbox is full; unable to enqueue: " + line);
+        }
+    }
 }

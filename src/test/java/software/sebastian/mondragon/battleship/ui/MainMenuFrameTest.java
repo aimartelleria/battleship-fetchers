@@ -3,11 +3,15 @@ package software.sebastian.mondragon.battleship.ui;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.fixture.FrameFixture;
 import org.junit.jupiter.api.*;
+import org.assertj.swing.timing.Condition;
+import org.assertj.swing.timing.Pause;
+import org.assertj.swing.timing.Timeout;
 import software.sebastian.mondragon.battleship.game.client.ClientSession;
 import software.sebastian.mondragon.battleship.ui.support.StubClientSession;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +29,7 @@ class MainMenuFrameTest {
         MainMenuFrame frame = GuiActionRunner.execute(() -> new MainMenuFrame(sessionSupplier));
         window = new FrameFixture(frame);
         window.show(); // muestra el frame
+        window.robot().waitForIdle();
     }
 
     @AfterEach
@@ -33,9 +38,7 @@ class MainMenuFrameTest {
             window.cleanUp();
 
         // cerrar cualquier otro frame abierto por los tests
-        for (Frame f : Frame.getFrames()) {
-            if (f.isVisible()) f.dispose();
-        }
+        disposeRemainingFrames();
     }
 
     @Test
@@ -53,37 +56,56 @@ class MainMenuFrameTest {
     @DisplayName("Click en 'Crear partida' cierra el menú y abre GameHostFrame")
     void shouldOpenHostFrameOnClickCreate() {
         window.button("crearBtn").click();
+        window.robot().waitForIdle();
 
-        assertFalse(window.target().isVisible(), "El menú principal debe cerrarse");
+        boolean menuVisible = GuiActionRunner.execute(() -> window.target().isVisible());
+        assertFalse(menuVisible, "El menú principal debe cerrarse");
 
-        boolean opened = false;
-        for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameHostFrame hostFrame && hostFrame.isVisible()) {
-                opened = true;
-                hostFrame.dispose();
-                break;
-            }
-        }
-        assertTrue(opened, "GameHostFrame debería abrirse al pulsar Crear partida");
+        GameHostFrame hostFrame = waitForVisibleFrame(GameHostFrame.class);
+        assertNotNull(hostFrame, "GameHostFrame debería abrirse al pulsar Crear partida");
+        GuiActionRunner.execute(hostFrame::dispose);
     }
 
     @Test
     @DisplayName("Click en 'Unirse a partida' cierra el menú y abre GameJoinFrame")
     void shouldOpenJoinFrameOnClickJoin() {
         window.button("unirseBtn").click();
+        window.robot().waitForIdle();
 
-        assertFalse(window.target().isVisible(), "El menú principal debe cerrarse");
+        boolean menuVisible = GuiActionRunner.execute(() -> window.target().isVisible());
+        assertFalse(menuVisible, "El menú principal debe cerrarse");
 
-        boolean opened = false;
-        for (Frame f : Frame.getFrames()) {
-            if (f instanceof GameJoinFrame joinFrame && joinFrame.isVisible()) {
-                opened = true;
-                joinFrame.dispose();
-                break;
-            }
-        }
-        assertTrue(opened, "GameJoinFrame debería abrirse al pulsar Unirse a partida");
+        GameJoinFrame joinFrame = waitForVisibleFrame(GameJoinFrame.class);
+        assertNotNull(joinFrame, "GameJoinFrame debería abrirse al pulsar Unirse a partida");
+        GuiActionRunner.execute(joinFrame::dispose);
     }
 
-}
+    private <T extends Frame> T waitForVisibleFrame(Class<T> frameType) {
+        AtomicReference<T> frameRef = new AtomicReference<>();
+        Pause.pause(new Condition("Esperando " + frameType.getSimpleName()) {
+            @Override
+            public boolean test() {
+                return GuiActionRunner.execute(() -> {
+                    for (Frame frame : Frame.getFrames()) {
+                        if (frameType.isInstance(frame) && frame.isShowing()) {
+                            frameRef.set(frameType.cast(frame));
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+            }
+        }, Timeout.timeout(5_000));
+        return frameRef.get();
+    }
 
+    private void disposeRemainingFrames() {
+        GuiActionRunner.execute(() -> {
+            for (Frame frame : Frame.getFrames()) {
+                if (frame.isDisplayable()) {
+                    frame.dispose();
+                }
+            }
+        });
+    }
+}

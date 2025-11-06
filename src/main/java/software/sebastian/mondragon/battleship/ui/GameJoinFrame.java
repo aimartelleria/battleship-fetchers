@@ -163,6 +163,15 @@ public class GameJoinFrame extends JFrame {
                     appendWelcomeMessages();
                     openBoard();
                 } catch (Exception ex) {
+                    if (ex instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    Throwable cause = ex.getCause();
+                    if (cause instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
                     handleFailure(ex);
                 } finally {
                     connectBtn.setEnabled(true);
@@ -174,7 +183,7 @@ public class GameJoinFrame extends JFrame {
 
     private void updateInfoAfterJoin(int jugadorId, int partidaId) {
         StringBuilder sb = new StringBuilder(infoArea.getText());
-        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
+        if (!sb.isEmpty() && sb.charAt(sb.length() - 1) != '\n') {
             sb.append('\n');
         }
         sb.append("Jugador ID: ").append(jugadorId).append('\n');

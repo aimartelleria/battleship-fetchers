@@ -19,16 +19,16 @@ import java.util.logging.Logger;
 public class GameHostFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(GameHostFrame.class.getName());
 
-    private final ClientSession session;
-    private final Supplier<ClientSession> sessionSupplier;
+    private final transient ClientSession session;
+    private final transient Supplier<ClientSession> sessionSupplier;
     private final JLabel statusLabel;
     private final JTextArea infoArea;
     private final JTextArea notificationArea;
-    private final java.util.function.Consumer<String> notificationConsumer;
+    private final transient java.util.function.Consumer<String> notificationConsumer;
 
     private volatile boolean boardOpened;
     private boolean cleanedUp;
-    private SwingWorker<Void, Void> worker;
+    private transient SwingWorker<Void, Void> worker;
 
     public GameHostFrame(Supplier<ClientSession> sessionSupplier) {
         this.sessionSupplier = Objects.requireNonNull(sessionSupplier, "sessionSupplier");
@@ -115,6 +115,15 @@ public class GameHostFrame extends JFrame {
                     updateInfoArea(jugadorId, partidoId);
                     appendWelcomeMessages();
                 } catch (Exception ex) {
+                    if (ex instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    Throwable cause = ex.getCause();
+                    if (cause instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
                     handleFailure(ex);
                 }
             }

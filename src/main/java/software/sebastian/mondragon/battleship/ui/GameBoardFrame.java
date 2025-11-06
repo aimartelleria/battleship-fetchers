@@ -17,8 +17,8 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public class GameBoardFrame extends JFrame {
-    private final ClientSession session;
-    private final Supplier<ClientSession> sessionSupplier;
+    private final transient ClientSession session;
+    private final transient Supplier<ClientSession> sessionSupplier;
     private final JButton[][] ownGrid = new JButton[10][10];
     private final JButton[][] enemyGrid = new JButton[10][10];
     private final JLabel statusLabel;
@@ -27,7 +27,7 @@ public class GameBoardFrame extends JFrame {
     private boolean horizontal = true;
     private JButton rotateBtn;
     private boolean cleanedUp;
-    private final java.util.function.Consumer<String> notificationConsumer;
+    private final transient java.util.function.Consumer<String> notificationConsumer;
 
     public GameBoardFrame(ClientSession session, Supplier<ClientSession> sessionSupplier) {
         this.session = Objects.requireNonNull(session, "session");
