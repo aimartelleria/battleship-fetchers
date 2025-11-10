@@ -1,5 +1,6 @@
 package software.sebastian.mondragon.battleship.game;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,16 +13,23 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import software.sebastian.mondragon.battleship.game.server.TcpServer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MainTest {
     private static final Method PARSE_PORT_METHOD = resolveParsePort();
+
+    @AfterEach
+    void resetMainHooks() {
+        Main.resetTestHooks();
+    }
 
     @Test
     void testMainServerConPuertoInvalidoRegistraErrorGlobal() throws Exception {
@@ -106,6 +114,47 @@ class MainTest {
     }
 
     @Test
+    void testModoClientConParametrosEjecutaLauncher() throws Exception {
+        List<String> lanzamientos = new ArrayList<>();
+        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
+                lanzamientos.add(host + ":" + port));
+
+        Main.main(new String[]{"client", "servidor.example", "12345"});
+
+        assertEquals(List.of("servidor.example:12345"), lanzamientos);
+    }
+
+    @Test
+    void testModoClientConHostVacioUsaValoresPorDefecto() throws Exception {
+        List<String> lanzamientos = new ArrayList<>();
+        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
+                lanzamientos.add(host + ":" + port));
+
+        Main.main(new String[]{"client", ""});
+
+        assertEquals(List.of("localhost:9090"), lanzamientos);
+    }
+
+    @Test
+    void testModoServerSinPuertoUsaPuertoPorDefecto() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch stopped = new CountDownLatch(1);
+        AtomicInteger capturedPort = new AtomicInteger(-1);
+        Main.overrideServerFactory(port -> new StubTcpServer(port, started, stopped, capturedPort));
+
+        Thread serverThread = new Thread(() -> Main.main(new String[]{"server"}), "main-server-default-port");
+        serverThread.start();
+
+        assertTrue(started.await(5, TimeUnit.SECONDS), "El servidor no se inici�� a tiempo");
+        assertEquals(9090, capturedPort.get(), "Debe usar el puerto por defecto 9090");
+
+        serverThread.interrupt();
+        serverThread.join(5000);
+
+        assertTrue(stopped.await(2, TimeUnit.SECONDS), "El servidor stub debi�� detenerse");
+    }
+
+    @Test
     void testStartServerConLatchPersonalizado() throws Exception {
         int port;
         try (ServerSocket ss = new ServerSocket(0)) {
@@ -118,7 +167,7 @@ class MainTest {
     @Test
     void testModoPuertoDirectoInvalidoRegistraErrorEspecifico() throws Exception {
         List<String> logs = captureMainLogs(Level.SEVERE, () -> Main.main(new String[]{"no-es-numero"}));
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Entrada inválida")),
+        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Entrada invalida")),
                 "Esperaba log indicando error de entrada");
     }
 
@@ -224,6 +273,30 @@ class MainTest {
 
         List<String> snapshot() {
             return new ArrayList<>(messages);
+        }
+    }
+
+    private static final class StubTcpServer extends TcpServer {
+        private final CountDownLatch startedLatch;
+        private final CountDownLatch stoppedLatch;
+        private final AtomicInteger capturedPort;
+
+        StubTcpServer(int port, CountDownLatch startedLatch, CountDownLatch stoppedLatch, AtomicInteger capturedPort) {
+            super(port);
+            this.startedLatch = startedLatch;
+            this.stoppedLatch = stoppedLatch;
+            this.capturedPort = capturedPort;
+            this.capturedPort.set(port);
+        }
+
+        @Override
+        public void start() {
+            startedLatch.countDown();
+        }
+
+        @Override
+        public void stop() {
+            stoppedLatch.countDown();
         }
     }
 }
