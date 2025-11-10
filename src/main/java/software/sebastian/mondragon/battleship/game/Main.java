@@ -5,7 +5,6 @@ import software.sebastian.mondragon.battleship.game.server.TcpServer;
 import software.sebastian.mondragon.battleship.ui.MainMenuFrame;
 
 import javax.swing.SwingUtilities;
-import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;

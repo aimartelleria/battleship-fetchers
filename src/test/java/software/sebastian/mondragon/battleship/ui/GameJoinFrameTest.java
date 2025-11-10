@@ -138,7 +138,7 @@ class GameJoinFrameTest {
     // -----------------------------------------------------------------
     // Stub interno (sin Mockito)
     // -----------------------------------------------------------------
-    private static class StubClientSession implements ClientSession {
+    static class StubClientSession implements ClientSession {
         boolean connected;
         boolean unsubscribed;
         boolean cleanupCalled;
@@ -202,43 +202,36 @@ class GameJoinFrameTest {
 
         @Override
         public boolean isConnected() {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'isConnected'");
         }
 
         @Override
         public void usarJugador(int jugadorId) throws IOException, TcpClientException {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'usarJugador'");
         }
 
         @Override
         public int crearPartido() throws IOException, TcpClientException {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'crearPartido'");
         }
 
         @Override
         public ShipPlacementResult colocarBarco(List<int[]> coords) throws IOException, TcpClientException {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'colocarBarco'");
         }
 
         @Override
         public ResultadoDisparo disparar(int fila, int columna) throws IOException, TcpClientException {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'disparar'");
         }
 
         @Override
         public Integer getJugadorId() {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'getJugadorId'");
         }
 
         @Override
         public Integer getPartidoId() {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'getPartidoId'");
         }
     }
