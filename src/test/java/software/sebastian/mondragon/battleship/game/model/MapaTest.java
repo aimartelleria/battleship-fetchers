@@ -2,7 +2,9 @@ package software.sebastian.mondragon.battleship.game.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -90,10 +92,24 @@ class MapaTest {
     }
 
     @Test
+    void crearBarcoConListaNullLanzaExcepcion() {
+        Mapa mapa = crearMapa();
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(null));
+    }
+
+    @Test
     void crearBarcoConListaVaciaLanzaExcepcion() {
         Mapa mapa = crearMapa();
         List<int[]> vacia = List.of();
         assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(vacia));
+    }
+
+    @Test
+    void crearBarcoConCoordenadaNullLanzaExcepcion() {
+        Mapa mapa = crearMapa();
+        List<int[]> posiciones = new ArrayList<>();
+        posiciones.add(null);
+        assertThrows(IllegalArgumentException.class, () -> mapa.crearBarco(posiciones));
     }
 
     @Test
@@ -108,5 +124,18 @@ class MapaTest {
         Mapa mapa = new Mapa(42, 7, 9);
         assertEquals(7, mapa.getRows());
         assertEquals(9, mapa.getCols());
+    }
+
+    @Test
+    void getTodasCoordenadasReturnsUnmodifiableCollection() {
+        Mapa mapa = new Mapa(1, 2, 3);
+
+        Collection<Coordenada> todas = mapa.getTodasCoordenadas();
+
+        assertEquals(6, todas.size(), "Debe haber una coordenada por cada celda del mapa");
+
+        Coordenada first = todas.iterator().next();
+        assertThrows(UnsupportedOperationException.class, () -> todas.add(first),
+                "La colección devuelta por getTodasCoordenadas debe ser inmodificable");
     }
 }
