@@ -1,15 +1,12 @@
 package software.sebastian.mondragon.battleship.game;
 
-import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
-import software.sebastian.mondragon.battleship.game.model.Jugador;
-import software.sebastian.mondragon.battleship.game.model.Mapa;
-import software.sebastian.mondragon.battleship.game.model.Partido;
-import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
+import software.sebastian.mondragon.battleship.game.client.GameClientSession;
 import software.sebastian.mondragon.battleship.game.server.TcpServer;
-import software.sebastian.mondragon.battleship.game.service.GameService;
-import software.sebastian.mondragon.battleship.game.service.GameService.Notifier;
+import software.sebastian.mondragon.battleship.ui.MainMenuFrame;
+
+import javax.swing.SwingUtilities;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,15 +23,17 @@ public class Main {
         }
     }
 
-    private static void execute(String[] args) throws IOException, NumberFormatException, IllegalArgumentException {
+    private static void execute(String[] args) throws IOException {
         if (args.length == 0) {
-            runDemo();
+            startClient("localhost", DEFAULT_PORT);
             return;
         }
 
         String mode = args[0];
-        if ("demo".equalsIgnoreCase(mode)) {
-            runDemo();
+        if ("client".equalsIgnoreCase(mode)) {
+            String host = args.length > 1 ? args[1] : "localhost";
+            int port = args.length > 2 ? parsePort(args[2]) : DEFAULT_PORT;
+            startClient(host, port);
             return;
         }
 
@@ -49,7 +48,7 @@ public class Main {
             int port = parsePort(mode);
             startServer(port);
         } catch (IllegalArgumentException ex) {
-            LOGGER.log(Level.SEVERE, "Entrada inválida de puerto: {0}", ex.getMessage());
+            LOGGER.log(Level.SEVERE, "Entrada inválida: {0}. Usa 'client [host] [port]' o 'server [port]'.", ex.getMessage());
         }
     }
 
@@ -89,58 +88,15 @@ public class Main {
         }
     }
 
-    private static void runDemo() {
-        InMemoryRepo repo = new InMemoryRepo();
-
-        Notifier notifier = (jugadorId, mensaje) ->
-                LOGGER.log(Level.INFO, "[Notificación -> Jugador {0}] {1}", new Object[]{jugadorId, mensaje});
-
-        GameService gs = new GameService(repo, notifier);
-
-        Jugador j1 = gs.crearJugador();
-        Jugador j2 = gs.crearJugador();
-        LOGGER.log(Level.INFO, "Jugadores creados: {0}, {1}", new Object[]{j1, j2});
-
-        Partido p = gs.crearPartido(j1.getId());
-        LOGGER.log(Level.INFO, "Partida creada: {0}", p);
-
-        gs.unirsePartido(p.getId(), j2.getId());
-
-        Mapa mapa1 = repo.getMapa(j1.getMapaId());
-        Mapa mapa2 = repo.getMapa(j2.getMapaId());
-        validarMapas(mapa1, mapa2);
-
-        gs.colocarBarco(j1.getId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
-        gs.colocarBarco(j2.getId(), Arrays.asList(new int[]{5, 5}, new int[]{5, 6}));
-
-        LOGGER.info("Barcos colocados. Empezamos a disparar...");
-
-        int turno = repo.getPartido(p.getId()).getTurnoJugadorId();
-        int other = determinarOtroJugador(turno, j1, j2);
-
-        ejecutarDisparo(gs, turno, p.getId(), 5, 5);
-        ejecutarDisparo(gs, other, p.getId(), 0, 0);
-
-        LOGGER.log(Level.INFO, "Demo finalizado. Estado final del partido: {0}", repo.getPartido(p.getId()));
-    }
-
-    static int determinarOtroJugador(int turno, Jugador j1, Jugador j2) {
-        return (turno == j1.getId()) ? j2.getId() : j1.getId();
-    }
-
-    static void ejecutarDisparo(GameService gs, int jugadorId, int partidoId, int fila, int columna) {
-        try {
-            ResultadoDisparo resultado = gs.disparar(jugadorId, partidoId, fila, columna);
-            LOGGER.log(Level.INFO, "Resultado: {0}", resultado);
-        } catch (Exception ex) {
-            LOGGER.log(Level.WARNING, "Error en disparo: {0}", ex.getMessage());
+    private static void startClient(String host, int port) {
+        final String sanitizedHost = (host == null || host.isBlank()) ? "localhost" : host;
+        LOGGER.log(Level.INFO, "Iniciando cliente Battleship contra {0}:{1}",
+                new Object[]{sanitizedHost, port});
+        if (GraphicsEnvironment.isHeadless()) {
+            LOGGER.log(Level.INFO, "Entorno gráfico no disponible; omitiendo arranque del cliente.");
+            return;
         }
-    }
-
-
-    static void validarMapas(Mapa mapa1, Mapa mapa2) {
-        if (mapa1 == null || mapa2 == null) {
-            throw new IllegalStateException("Mapas no inicializados");
-        }
+        SwingUtilities.invokeLater(() ->
+                new MainMenuFrame(() -> new GameClientSession(sanitizedHost, port)));
     }
 }

@@ -2,12 +2,6 @@ package software.sebastian.mondragon.battleship.game;
 
 import org.junit.jupiter.api.Test;
 
-import software.sebastian.mondragon.battleship.game.model.Jugador;
-import software.sebastian.mondragon.battleship.game.model.Mapa;
-import software.sebastian.mondragon.battleship.game.repo.InMemoryRepo;
-import software.sebastian.mondragon.battleship.game.service.GameService;
-import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
-
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -30,31 +24,11 @@ class MainTest {
     private static final Method PARSE_PORT_METHOD = resolveParsePort();
 
     @Test
-    void testMainSeEjecutaSinErrores() {
-        Logger logger = Logger.getLogger(Main.class.getName());
-        CapturingHandler handler = new CapturingHandler();
-        boolean originalUseParentHandlers = logger.getUseParentHandlers();
-        Level originalLevel = logger.getLevel();
-        logger.addHandler(handler);
-        logger.setUseParentHandlers(false);
-        logger.setLevel(Level.INFO);
-        try {
-            assertDoesNotThrow(() -> Main.main(new String[0]));
-        } finally {
-            logger.removeHandler(handler);
-            logger.setUseParentHandlers(originalUseParentHandlers);
-            logger.setLevel(originalLevel);
-        }
-        List<String> logs = handler.snapshot();
-        handler.close();
-        assertFalse(logs.isEmpty());
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Demo finalizado")));
-    }
-
-    @Test
-    void testDemoModeInvocadoDesdeArgumentos() throws Exception {
-        List<String> logs = captureMainLogs(Level.INFO, () -> Main.main(new String[]{"demo"}));
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Demo finalizado")));
+    void testMainLanzaClientePorDefecto() throws Exception {
+        List<String> logs = captureMainLogs(Level.INFO,
+                () -> runWithHeadless(() -> Main.main(new String[0])));
+        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Iniciando cliente Battleship contra")),
+                "Se esperaba log indicando el arranque del cliente");
     }
 
     @Test
@@ -150,68 +124,10 @@ class MainTest {
     }
 
     @Test
-    void testDeterminarOtroJugadorCubreAmbosResultados() {
-        Jugador j1 = new Jugador(1);
-        Jugador j2 = new Jugador(2);
-
-        int otroCuandoTurnoEsJ1 = Main.determinarOtroJugador(j1.getId(), j1, j2);
-        int otroCuandoTurnoEsJ2 = Main.determinarOtroJugador(j2.getId(), j1, j2);
-
-        assertEquals(j2.getId(), otroCuandoTurnoEsJ1);
-        assertEquals(j1.getId(), otroCuandoTurnoEsJ2);
-    }
-
-    @Test
-    void testEjecutarDisparoRegistraError() {
-        Logger logger = Logger.getLogger(Main.class.getName());
-        CapturingHandler handler = new CapturingHandler();
-        boolean originalUseParentHandlers = logger.getUseParentHandlers();
-        Level originalLevel = logger.getLevel();
-        logger.addHandler(handler);
-        logger.setUseParentHandlers(false);
-        logger.setLevel(Level.ALL);
-        try {
-            Main.ejecutarDisparo(new GameServiceQueFalla(), 1, 1, 0, 0);
-        } finally {
-            logger.removeHandler(handler);
-            logger.setUseParentHandlers(originalUseParentHandlers);
-            logger.setLevel(originalLevel);
-        }
-        List<String> logs = handler.snapshot();
-        handler.close();
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Error en disparo")));
-    }
-
-    @Test
-    void testConstructorCubreInicializacion() {
-        assertNotNull(new Main());
-    }
-
-    @Test
-    void testValidarMapasExitoso() {
-        Mapa mapa1 = new Mapa(1, 2, 2);
-        Mapa mapa2 = new Mapa(2, 2, 2);
-        assertDoesNotThrow(() -> Main.validarMapas(mapa1, mapa2));
-    }
-
-    @Test
-    void testValidarMapasLanzaExcepcion() {
-        Mapa mapa = new Mapa(1, 2, 2);
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> Main.validarMapas(null, mapa));
-        assertEquals("Mapas no inicializados", ex.getMessage());
-    }
-
-    @Test
-    void testValidarMapasLanzaExcepcionCuandoSegundoEsNull() {
-        Mapa mapa = new Mapa(1, 2, 2);
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> Main.validarMapas(mapa, null));
-        assertEquals("Mapas no inicializados", ex.getMessage());
-    }
-
-    @Test
     void testModoPuertoDirectoInvalidoRegistraErrorEspecifico() throws Exception {
         List<String> logs = captureMainLogs(Level.SEVERE, () -> Main.main(new String[]{"no-es-numero"}));
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Entrada inv")));
+        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Entrada inválida")),
+                "Esperaba log indicando error de entrada");
     }
 
     private static Method resolveParsePort() {
@@ -284,6 +200,20 @@ class MainTest {
         throw new AssertionError("El hilo del servidor no entro en estado WAITING");
     }
 
+    private static void runWithHeadless(ThrowingRunnable action) throws Exception {
+        String previous = System.getProperty("java.awt.headless");
+        System.setProperty("java.awt.headless", "true");
+        try {
+            action.run();
+        } finally {
+            if (previous != null) {
+                System.setProperty("java.awt.headless", previous);
+            } else {
+                System.clearProperty("java.awt.headless");
+            }
+        }
+    }
+
     @FunctionalInterface
     private interface ThrowingRunnable {
         void run() throws Exception;
@@ -316,17 +246,6 @@ class MainTest {
 
         List<String> snapshot() {
             return new ArrayList<>(messages);
-        }
-    }
-
-    private static final class GameServiceQueFalla extends GameService {
-        GameServiceQueFalla() {
-            super(new InMemoryRepo(), (id, msg) -> { });
-        }
-
-        @Override
-        public ResultadoDisparo disparar(int jugadorId, int partidoId, int fila, int columna) {
-            throw new IllegalStateException("fallo forzado");
         }
     }
 }
