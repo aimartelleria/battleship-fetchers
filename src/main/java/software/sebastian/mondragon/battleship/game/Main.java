@@ -92,10 +92,6 @@ public class Main {
         final String sanitizedHost = (host == null || host.isBlank()) ? "localhost" : host;
         LOGGER.log(Level.INFO, "Iniciando cliente Battleship contra {0}:{1}",
                 new Object[]{sanitizedHost, port});
-        if (GraphicsEnvironment.isHeadless()) {
-            LOGGER.log(Level.INFO, "Entorno gráfico no disponible; omitiendo arranque del cliente.");
-            return;
-        }
         SwingUtilities.invokeLater(() ->
                 new MainMenuFrame(() -> new GameClientSession(sanitizedHost, port)));
     }

@@ -23,7 +23,7 @@ public class GameJoinFrame extends JFrame {
     private final ClientSession session;
     private final JTextField gameCodeField;
     private final JLabel statusLabel;
-    private final JTextArea infoArea;
+    final JTextArea infoArea;
     private final JTextArea notificationArea;
     private final java.util.function.Consumer<String> notificationConsumer;
 
@@ -189,14 +189,14 @@ public class GameJoinFrame extends JFrame {
         }
     }
 
-    private void appendNotificationSafely(String message) {
+    void appendNotificationSafely(String message) {
         SwingUtilities.invokeLater(() -> {
             notificationArea.append(message + System.lineSeparator());
             notificationArea.setCaretPosition(notificationArea.getDocument().getLength());
         });
     }
 
-    private void openBoard() {
+    void openBoard() {
         if (boardOpened) {
             return;
         }

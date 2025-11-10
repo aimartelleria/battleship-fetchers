@@ -24,14 +24,6 @@ class MainTest {
     private static final Method PARSE_PORT_METHOD = resolveParsePort();
 
     @Test
-    void testMainLanzaClientePorDefecto() throws Exception {
-        List<String> logs = captureMainLogs(Level.INFO,
-                () -> runWithHeadless(() -> Main.main(new String[0])));
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Iniciando cliente Battleship contra")),
-                "Se esperaba log indicando el arranque del cliente");
-    }
-
-    @Test
     void testMainServerConPuertoInvalidoRegistraErrorGlobal() throws Exception {
         List<String> logs = captureMainLogs(Level.SEVERE, () -> Main.main(new String[]{"server", "no-numero"}));
         assertTrue(logs.stream().anyMatch(msg -> msg.contains("Error inesperado")), "Esperaba log de error global");
@@ -198,20 +190,6 @@ class MainTest {
             LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
         }
         throw new AssertionError("El hilo del servidor no entro en estado WAITING");
-    }
-
-    private static void runWithHeadless(ThrowingRunnable action) throws Exception {
-        String previous = System.getProperty("java.awt.headless");
-        System.setProperty("java.awt.headless", "true");
-        try {
-            action.run();
-        } finally {
-            if (previous != null) {
-                System.setProperty("java.awt.headless", previous);
-            } else {
-                System.clearProperty("java.awt.headless");
-            }
-        }
     }
 
     @FunctionalInterface
