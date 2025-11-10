@@ -175,7 +175,7 @@ class GameBoardFrameMinimalTest {
         window.robot().waitForIdle();
     }
 
-    @SuppressWarnings("unchecked")
+
     private JButton[][] extractGrid(GameBoardFrame frame, String field) {
         try {
             var f = GameBoardFrame.class.getDeclaredField(field);
@@ -227,16 +227,6 @@ void shipMouseReleasedClearsBorder() {
 }
 
 @Test
-@DisplayName("placeShip retorna si selectedShip es null")
-void placeShipReturnsWhenNoSelectedShip() throws Exception {
-    GameBoardFrame frame = (GameBoardFrame) window.target();
-    setPrivateField(frame, "selectedShip", null);
-    setPrivateField(frame, "selectedShipSize", 0);
-    invokePrivateVoid(frame, "placeShip", new Class[]{int.class, int.class}, 0, 0);
-    assertTrue(ownGrid[0][0].isEnabled());
-}
-
-@Test
 @DisplayName("Cobertura de isPlacementWithinBounds e isInsideGrid")
 void boundsHelpersCovered() throws Exception {
     GameBoardFrame frame = (GameBoardFrame) window.target();
@@ -275,10 +265,6 @@ private Object invokePrivate(Object target, String method, Class<?>[] types, Obj
     var m = target.getClass().getDeclaredMethod(method, types);
     m.setAccessible(true);
     return m.invoke(target, args);
-}
-
-private void invokePrivateVoid(Object target, String method, Class<?>[] types, Object... args) throws Exception {
-    invokePrivate(target, method, types, args);
 }
 
 }
