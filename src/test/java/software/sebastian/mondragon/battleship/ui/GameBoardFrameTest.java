@@ -23,6 +23,8 @@ class GameBoardFrameTest {
 
     @BeforeEach
     void setUp() {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(),
+                "Entorno headless: se omiten pruebas de interfaz Swing");
         System.setProperty("java.awt.headless", "false");
         sessionStub = new StubClientSession();
         GameBoardFrame frame = GuiActionRunner.execute(() -> new GameBoardFrame(sessionStub, StubClientSession::new));

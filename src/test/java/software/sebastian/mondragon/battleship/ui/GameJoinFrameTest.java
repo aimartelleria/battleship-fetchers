@@ -18,6 +18,8 @@ class GameJoinFrameTest {
 
     @BeforeEach
     void setUp() {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(),
+                "Entorno headless: se omiten pruebas de interfaz Swing");
         System.setProperty("java.awt.headless", "false");
         sessionStub = new StubClientSession();
         GameJoinFrame frame = GuiActionRunner.execute(() -> new GameJoinFrame(() -> sessionStub));

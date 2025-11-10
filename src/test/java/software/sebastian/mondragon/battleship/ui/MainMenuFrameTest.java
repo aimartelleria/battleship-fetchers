@@ -25,6 +25,8 @@ class MainMenuFrameTest {
 
     @BeforeEach
     void setUp() {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(),
+                "Entorno headless: se omiten pruebas de interfaz Swing");
         System.setProperty("java.awt.headless", "false"); // asegura modo gráfico
         sessionSupplier = StubClientSession::new;
 

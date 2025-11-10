@@ -8,12 +8,18 @@ import javax.swing.SwingUtilities;
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Main {
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
     private static final int DEFAULT_PORT = 9090;
+    private static Supplier<Boolean> headlessDetector = GraphicsEnvironment::isHeadless;
+    private static Consumer<Runnable> uiExecutor = SwingUtilities::invokeLater;
+    private static ClientLauncher clientLauncher = Main::launchDefaultClient;
+    private static TcpServerFactory serverFactory = TcpServer::new;
 
     public static void main(String[] args) {
         try {
@@ -48,7 +54,7 @@ public class Main {
             int port = parsePort(mode);
             startServer(port);
         } catch (IllegalArgumentException ex) {
-            LOGGER.log(Level.SEVERE, "Entrada inválida: {0}. Usa 'client [host] [port]' o 'server [port]'.", ex.getMessage());
+            LOGGER.log(Level.SEVERE, "Entrada invalida: {0}. Usa 'client [host] [port]' o 'server [port]'.", ex.getMessage());
         }
     }
 
@@ -57,7 +63,7 @@ public class Main {
     }
 
     static void startServer(int port, CountDownLatch latch) throws IOException {
-        TcpServer server = new TcpServer(port);
+        TcpServer server = serverFactory.create(port);
         server.start();
         LOGGER.log(Level.INFO, "Servidor TCP escuchando en el puerto {0}. Presiona Ctrl+C para detenerlo.", port);
 
@@ -92,11 +98,42 @@ public class Main {
         final String sanitizedHost = (host == null || host.isBlank()) ? "localhost" : host;
         LOGGER.log(Level.INFO, "Iniciando cliente Battleship contra {0}:{1}",
                 new Object[]{sanitizedHost, port});
-        if (GraphicsEnvironment.isHeadless()) {
+        if (headlessDetector.get()) {
             LOGGER.log(Level.INFO, "Entorno gráfico no disponible; omitiendo arranque del cliente.");
             return;
         }
-        SwingUtilities.invokeLater(() ->
-                new MainMenuFrame(() -> new GameClientSession(sanitizedHost, port)));
+        uiExecutor.accept(() -> clientLauncher.launch(sanitizedHost, port));
+    }
+
+    private static void launchDefaultClient(String host, int port) {
+        new MainMenuFrame(() -> new GameClientSession(host, port));
+    }
+
+    static void overrideClientHooks(Supplier<Boolean> headlessOverride,
+                                    Consumer<Runnable> executorOverride,
+                                    ClientLauncher launcherOverride) {
+        headlessDetector = headlessOverride != null ? headlessOverride : GraphicsEnvironment::isHeadless;
+        uiExecutor = executorOverride != null ? executorOverride : SwingUtilities::invokeLater;
+        clientLauncher = launcherOverride != null ? launcherOverride : Main::launchDefaultClient;
+    }
+
+    static void overrideServerFactory(TcpServerFactory factory) {
+        serverFactory = factory != null ? factory : TcpServer::new;
+    }
+
+    static void resetTestHooks() {
+        overrideClientHooks(null, null, null);
+        overrideServerFactory(null);
+    }
+
+    @FunctionalInterface
+    interface ClientLauncher {
+        void launch(String host, int port);
+    }
+
+    @FunctionalInterface
+    interface TcpServerFactory {
+        TcpServer create(int port) throws IOException;
     }
 }
+
