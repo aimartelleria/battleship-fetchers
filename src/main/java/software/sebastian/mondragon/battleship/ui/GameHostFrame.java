@@ -21,16 +21,16 @@ import java.util.logging.Logger;
 public class GameHostFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(GameHostFrame.class.getName());
 
-    private final ClientSession session;
-    private final Supplier<ClientSession> sessionSupplier;
+    private final transient ClientSession session;
+    private final transient Supplier<ClientSession> sessionSupplier;
     private final JLabel statusLabel;
     private final JTextArea infoArea;
     private final JTextArea notificationArea;
-    private final java.util.function.Consumer<String> notificationConsumer;
+    private final transient java.util.function.Consumer<String> notificationConsumer;
 
     private volatile boolean boardOpened;
     private boolean cleanedUp;
-    private SwingWorker<Void, Void> worker;
+    private transient SwingWorker<Void, Void> worker;
 
     public GameHostFrame(Supplier<ClientSession> sessionSupplier) {
         this.sessionSupplier = Objects.requireNonNull(sessionSupplier, "sessionSupplier");
@@ -104,14 +104,10 @@ public class GameHostFrame extends JFrame {
         @Override
         protected Void doInBackground() throws Exception {
             if (isCancelled()) return null;
-
-            // Connect and create game safely
             session.connect();
             if (isCancelled()) return null;
-
             jugadorId = session.ensureJugador();
             if (isCancelled()) return null;
-
             partidoId = session.crearPartido();
             return null;
         }
@@ -119,24 +115,43 @@ public class GameHostFrame extends JFrame {
         @Override
         protected void done() {
             try {
-                // Restore interrupted status if necessary
-                get(); // may throw InterruptedException or ExecutionException
-                statusLabel.setText("Esperando al segundo jugador...");
-                updateInfoArea(jugadorId, partidoId);
-                appendWelcomeMessages();
+                get();
+                handleHostingSuccess(jugadorId, partidoId);
             } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt(); // preserve interruption
-                LOGGER.warning("Hosting thread interrupted");
-                statusLabel.setText("Operación interrumpida.");
+                handleInterrupted();
             } catch (ExecutionException ex) {
-                Throwable cause = ex.getCause();
-                handleFailure(cause instanceof Exception ? (Exception) cause : new Exception(cause));
+                handleExecutionFailure(ex);
             } catch (CancellationException ex) {
-                statusLabel.setText("Creación de partida cancelada.");
+                handleCancelled();
             }
         }
     };
     worker.execute();
+}
+
+private void handleHostingSuccess(int jugadorId, int partidoId) {
+    statusLabel.setText("Esperando al segundo jugador...");
+    updateInfoArea(jugadorId, partidoId);
+    appendWelcomeMessages();
+}
+
+private void handleInterrupted() {
+    Thread.currentThread().interrupt();
+    LOGGER.warning("Hosting thread interrupted");
+    statusLabel.setText("Operación interrumpida.");
+}
+
+private void handleExecutionFailure(ExecutionException ex) {
+    Throwable cause = ex.getCause();
+    if (cause instanceof Exception exception) {
+        handleFailure(exception);
+    } else {
+        handleFailure(new Exception(cause));
+    }
+}
+
+private void handleCancelled() {
+    statusLabel.setText("Creación de partida cancelada.");
 }
 
 

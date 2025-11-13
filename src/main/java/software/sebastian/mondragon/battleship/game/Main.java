@@ -6,9 +6,9 @@ import software.sebastian.mondragon.battleship.ui.MainMenuFrame;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -104,19 +104,19 @@ public class Main {
         new MainMenuFrame(() -> new GameClientSession(host, port));
     }
 
-    static void overrideClientHooks(Supplier<Boolean> headlessOverride,
-                                    Consumer<Runnable> executorOverride,
+    static void overrideClientHooks(Consumer<Runnable> executorOverride,
                                     ClientLauncher launcherOverride) {
-        uiExecutor = executorOverride != null ? executorOverride : SwingUtilities::invokeLater;
-        clientLauncher = launcherOverride != null ? launcherOverride : Main::launchDefaultClient;
+        uiExecutor = Objects.requireNonNullElse(executorOverride, SwingUtilities::invokeLater);
+        clientLauncher = Objects.requireNonNullElse(launcherOverride, Main::launchDefaultClient);
     }
+
 
     static void overrideServerFactory(TcpServerFactory factory) {
         serverFactory = factory != null ? factory : TcpServer::new;
     }
 
     static void resetTestHooks() {
-        overrideClientHooks(null, null, null);
+        overrideClientHooks( null, null);
         overrideServerFactory(null);
     }
 

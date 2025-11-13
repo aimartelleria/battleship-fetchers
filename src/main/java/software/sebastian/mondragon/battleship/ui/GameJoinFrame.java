@@ -21,17 +21,17 @@ import java.util.logging.Logger;
 public class GameJoinFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(GameJoinFrame.class.getName());
 
-    private final Supplier<ClientSession> sessionSupplier;
-    private final ClientSession session;
+    private final transient Supplier<ClientSession> sessionSupplier;
+    private final transient ClientSession session;
     private final JTextField gameCodeField;
     private final JLabel statusLabel;
     final JTextArea infoArea;
     private final JTextArea notificationArea;
-    private final java.util.function.Consumer<String> notificationConsumer;
+    private final transient java.util.function.Consumer<String> notificationConsumer;
 
     private boolean cleanedUp;
     private boolean boardOpened;
-    private SwingWorker<Void, Void> joinWorker;
+    private transient SwingWorker<Void, Void> joinWorker;
 
     public GameJoinFrame(Supplier<ClientSession> sessionSupplier) {
         this.sessionSupplier = Objects.requireNonNull(sessionSupplier, "sessionSupplier");
@@ -129,7 +129,7 @@ public class GameJoinFrame extends JFrame {
     private void connectToGame(JButton connectBtn) {
     String input = gameCodeField.getText().trim();
     if (input.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Ingresa un código válido.", "Código requerido", JOptionPane.WARNING_MESSAGE);
+        showWarning("Ingresa un código válido.", "Código requerido");
         return;
     }
 
@@ -137,7 +137,7 @@ public class GameJoinFrame extends JFrame {
     try {
         gameId = Integer.parseInt(input);
     } catch (NumberFormatException ex) {
-        JOptionPane.showMessageDialog(this, "El código debe ser numérico.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
+        showWarning("El código debe ser numérico.", "Formato inválido");
         return;
     }
 
@@ -162,20 +162,14 @@ public class GameJoinFrame extends JFrame {
         @Override
         protected void done() {
             try {
-                get(); // may throw InterruptedException or ExecutionException
-                statusLabel.setText("Conectado a la partida. Preparando tablero...");
-                updateInfoAfterJoin(jugadorId, partidaId);
-                appendWelcomeMessages();
-                openBoard();
+                get();
+                handleJoinSuccess(jugadorId, partidaId);
             } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt(); // restore interrupted status
-                LOGGER.warning("Join thread was interrupted");
-                statusLabel.setText("Operación interrumpida.");
+                handleJoinInterrupted();
             } catch (ExecutionException ex) {
-                Throwable cause = ex.getCause();
-                handleFailure(cause instanceof Exception ? (Exception) cause : new Exception(cause));
+                handleJoinFailure(ex);
             } catch (CancellationException ex) {
-                statusLabel.setText("Operación cancelada.");
+                handleJoinCancelled();
             } finally {
                 connectBtn.setEnabled(true);
             }
@@ -183,11 +177,41 @@ public class GameJoinFrame extends JFrame {
     };
     joinWorker.execute();
 }
+private void showWarning(String message, String title) {
+    JOptionPane.showMessageDialog(this, message, title, JOptionPane.WARNING_MESSAGE);
+}
+
+private void handleJoinSuccess(int jugadorId, int partidaId) {
+    statusLabel.setText("Conectado a la partida. Preparando tablero...");
+    updateInfoAfterJoin(jugadorId, partidaId);
+    appendWelcomeMessages();
+    openBoard();
+}
+
+private void handleJoinInterrupted() {
+    Thread.currentThread().interrupt();
+    LOGGER.warning("Join thread was interrupted");
+    statusLabel.setText("Operación interrumpida.");
+}
+
+private void handleJoinFailure(ExecutionException ex) {
+    Throwable cause = ex.getCause();
+    if (cause instanceof Exception exception) {
+        handleFailure(exception);
+    } else {
+        handleFailure(new Exception(cause));
+    }
+}
+
+private void handleJoinCancelled() {
+    statusLabel.setText("Operación cancelada.");
+}
+
 
 
     private void updateInfoAfterJoin(int jugadorId, int partidaId) {
         StringBuilder sb = new StringBuilder(infoArea.getText());
-        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
+        if (sb.isEmpty() && sb.charAt(sb.length() - 1) != '\n') {
             sb.append('\n');
         }
         sb.append("Jugador ID: ").append(jugadorId).append('\n');

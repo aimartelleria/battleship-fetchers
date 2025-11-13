@@ -116,7 +116,7 @@ class MainTest {
     @Test
     void testModoClientConParametrosEjecutaLauncher() throws Exception {
         List<String> lanzamientos = new ArrayList<>();
-        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
+        Main.overrideClientHooks(runnable -> runnable.run(), (host, port) ->
                 lanzamientos.add(host + ":" + port));
 
         Main.main(new String[]{"client", "servidor.example", "12345"});
@@ -127,7 +127,7 @@ class MainTest {
     @Test
     void testModoClientConHostVacioUsaValoresPorDefecto() throws Exception {
         List<String> lanzamientos = new ArrayList<>();
-        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
+        Main.overrideClientHooks( runnable -> runnable.run(), (host, port) ->
                 lanzamientos.add(host + ":" + port));
 
         Main.main(new String[]{"client", ""});

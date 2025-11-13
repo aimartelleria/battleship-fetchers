@@ -113,19 +113,19 @@ public class TcpClient implements Closeable {
         return connected.get();
     }
 
-    public int createPlayer() throws IOException, TcpClientException {
+    public int createPlayer() throws  TcpClientException {
         return executeCommandInt(CMD_CREATE_PLAYER, RESP_PLAYER, "player id");
     }
 
-    public int usePlayer(int playerId) throws IOException, TcpClientException {
+    public int usePlayer(int playerId) throws TcpClientException {
         return executeCommandInt(CMD_USE_PLAYER + " " + playerId, RESP_PLAYER, "player id");
     }
 
-    public int createGame() throws IOException, TcpClientException {
+    public int createGame() throws  TcpClientException {
         return executeCommandInt(CMD_CREATE_GAME, RESP_GAME, "game id");
     }
 
-    public int joinGame(int gameId) throws IOException, TcpClientException {
+    public int joinGame(int gameId) throws TcpClientException {
         return executeCommandInt(CMD_JOIN_GAME + " " + gameId, RESP_JOINED, "game id");
     }
 
