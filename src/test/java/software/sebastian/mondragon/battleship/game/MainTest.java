@@ -159,7 +159,7 @@ class MainTest {
 
     private List<String> captureClientLaunch(String... args) throws Exception {
         List<String> launches = new ArrayList<>();
-        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
+        Main.overrideClientHooks(runnable -> runnable.run(), (host, port) ->
                 launches.add(host + ":" + port));
         Main.main(args);
         return launches;

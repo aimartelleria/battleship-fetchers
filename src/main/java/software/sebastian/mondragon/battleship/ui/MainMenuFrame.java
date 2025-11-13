@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 //  MAIN MENU FRAME (versión testeable)
 // ----------------------------------
 public class MainMenuFrame extends JFrame {
-    private final Supplier<ClientSession> sessionSupplier;
+    private final transient Supplier<ClientSession> sessionSupplier;
 
     public MainMenuFrame() {
         this(() -> new GameClientSession("localhost", 9090));

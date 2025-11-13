@@ -84,7 +84,7 @@ class GameClientSessionTest {
     }
 
     @Test
-    void dispararRequiresPartidoSeleccionado() throws Exception {
+    void dispararRequiresPartidoSeleccionado() {
         StubTcpClient client = new StubTcpClient();
 
         try (GameClientSession session = new GameClientSession(client)) {
@@ -112,7 +112,7 @@ class GameClientSessionTest {
     }
 
     @Test
-    void notificationsOnlyReachRegisteredSubscribers() throws Exception {
+    void notificationsOnlyReachRegisteredSubscribers() {
         StubTcpClient client = new StubTcpClient();
         List<String> receivedA = new CopyOnWriteArrayList<>();
         List<String> receivedB = new CopyOnWriteArrayList<>();
@@ -134,7 +134,7 @@ class GameClientSessionTest {
     }
 
     @Test
-    void closeInvokesQuitAndAlwaysClosesClient() throws Exception {
+    void closeInvokesQuitAndAlwaysClosesClient()  {
         StubTcpClient client = new StubTcpClient();
         client.connected = true;
         client.quitException = new TcpClientException("boom");

@@ -2,8 +2,21 @@ package software.sebastian.mondragon.battleship.ui;
 
 import software.sebastian.mondragon.battleship.game.client.ClientSession;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -77,7 +90,7 @@ public class GameJoinFrame extends BaseSessionFrame {
     private void connectToGame(JButton connectBtn) {
         String input = gameCodeField.getText().trim();
         if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Ingresa un código válido.", "Código requerido", JOptionPane.WARNING_MESSAGE);
+            showWarning("Ingresa un código válido.", "Código requerido");
             return;
         }
 
@@ -85,7 +98,7 @@ public class GameJoinFrame extends BaseSessionFrame {
         try {
             gameId = Integer.parseInt(input);
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "El código debe ser numérico.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
+            showWarning("El código debe ser numérico.", "Formato inválido");
             return;
         }
 
@@ -98,8 +111,17 @@ public class GameJoinFrame extends BaseSessionFrame {
 
             @Override
             protected Void doInBackground() throws Exception {
+                if (isCancelled()) {
+                    return null;
+                }
                 session.connect();
+                if (isCancelled()) {
+                    return null;
+                }
                 jugadorId = session.ensureJugador();
+                if (isCancelled()) {
+                    return null;
+                }
                 partidaId = session.unirsePartido(gameId);
                 return null;
             }
@@ -108,29 +130,52 @@ public class GameJoinFrame extends BaseSessionFrame {
             protected void done() {
                 try {
                     get();
-                    updateInfoAfterJoin(jugadorId, partidaId);
-                    statusLabel.setText("Conectado a la partida. Preparando tablero...");
-                    appendWelcomeMessages();
-                    openBoard();
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                    showFailureAndReturn(LOGGER,
-                            "No se pudo unir a la partida",
-                            "No se pudo unir a la partida: ",
-                            interrupted,
-                            joinWorker);
+                    handleJoinSuccess(jugadorId, partidaId);
+                } catch (InterruptedException ex) {
+                    handleJoinInterrupted(ex);
                 } catch (ExecutionException ex) {
-                    showFailureAndReturn(LOGGER,
-                            "No se pudo unir a la partida",
-                            "No se pudo unir a la partida: ",
-                            ex,
-                            joinWorker);
+                    handleJoinFailure(ex);
+                } catch (CancellationException ex) {
+                    handleJoinCancelled();
                 } finally {
                     connectBtn.setEnabled(true);
                 }
             }
         };
         joinWorker.execute();
+    }
+
+    private void showWarning(String message, String title) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void handleJoinSuccess(int jugadorId, int partidaId) {
+        statusLabel.setText("Conectado a la partida. Preparando tablero...");
+        updateInfoAfterJoin(jugadorId, partidaId);
+        appendWelcomeMessages();
+        openBoard();
+    }
+
+    private void handleJoinInterrupted(InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        handleFailure(ex);
+    }
+
+    private void handleJoinFailure(ExecutionException ex) {
+        Throwable cause = ex.getCause();
+        handleFailure(cause instanceof Exception ? (Exception) cause : new Exception(cause));
+    }
+
+    private void handleJoinCancelled() {
+        statusLabel.setText("Operación cancelada.");
+    }
+
+    private void handleFailure(Exception ex) {
+        showFailureAndReturn(LOGGER,
+                "No se pudo unir a la partida",
+                "No se pudo unir a la partida: ",
+                ex,
+                joinWorker);
     }
 
     private void updateInfoAfterJoin(int jugadorId, int partidaId) {

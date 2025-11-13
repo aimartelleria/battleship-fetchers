@@ -17,17 +17,17 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public class GameBoardFrame extends JFrame {
-    private final ClientSession session;
-    private final Supplier<ClientSession> sessionSupplier;
+    private final transient ClientSession session;
+    private final transient Supplier<ClientSession> sessionSupplier;
     private final JButton[][] ownGrid = new JButton[10][10];
     private final JButton[][] enemyGrid = new JButton[10][10];
     private final JLabel statusLabel;
-    private JPanel selectedShip;
-    private int selectedShipSize;
-    private boolean horizontal = true;
+    JPanel selectedShip;
+    int selectedShipSize;
+    boolean horizontal = true;
     private JButton rotateBtn;
     private boolean cleanedUp;
-    private final java.util.function.Consumer<String> notificationConsumer;
+    private final transient java.util.function.Consumer<String> notificationConsumer;
 
     public GameBoardFrame(ClientSession session, Supplier<ClientSession> sessionSupplier) {
         this.session = Objects.requireNonNull(session, "session");
@@ -189,7 +189,7 @@ public class GameBoardFrame extends JFrame {
         rotateBtn.setText("Dirección: " + (horizontal ? "Horizontal" : "Vertical"));
     }
 
-    private void attemptPlaceShip(int startRow, int startCol) {
+    void attemptPlaceShip(int startRow, int startCol) {
         if (selectedShip == null) {
             return;
         }
@@ -277,7 +277,7 @@ public class GameBoardFrame extends JFrame {
         selectedShipSize = 0;
     }
 
-    private void shootAt(int row, int col, JButton cell) {
+    void shootAt(int row, int col, JButton cell) {
         if (!cell.isEnabled()) {
             return;
         }

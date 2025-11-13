@@ -79,12 +79,6 @@ class GameClientSessionIntegrationTest extends AbstractTcpServerIntegrationTest 
             if (condition.getAsBoolean()) {
                 return;
             }
-            try {
-                Thread.sleep(25);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                fail("Interrumpido mientras esperaba la condición: " + failureDetails.get());
-            }
         }
         fail("Tiempo de espera agotado. " + failureDetails.get());
     }

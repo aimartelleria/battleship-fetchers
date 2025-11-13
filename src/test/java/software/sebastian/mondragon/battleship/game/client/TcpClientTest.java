@@ -89,16 +89,11 @@ class TcpClientTest {
 
     @Test
     void constructorValidatesArguments() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new TcpClient("", 9090, Duration.ofSeconds(1), Duration.ZERO));
-        assertThrows(IllegalArgumentException.class,
-                () -> new TcpClient("localhost", 0, Duration.ofSeconds(1), Duration.ZERO));
-        assertThrows(IllegalArgumentException.class,
-                () -> new TcpClient("localhost", 9090, Duration.ZERO, Duration.ZERO));
-        assertThrows(IllegalArgumentException.class,
-                () -> new TcpClient("localhost", 9090, Duration.ofMillis(-1), Duration.ZERO));
-        assertThrows(IllegalArgumentException.class,
-                () -> new TcpClient("localhost", 9090, Duration.ofSeconds(1), Duration.ofMillis(-1)));
+        assertInvalidClient("", 9090, Duration.ofSeconds(1), Duration.ZERO);
+        assertInvalidClient("localhost", 0, Duration.ofSeconds(1), Duration.ZERO);
+        assertInvalidClient("localhost", 9090, Duration.ZERO, Duration.ZERO);
+        assertInvalidClient("localhost", 9090, Duration.ofMillis(-1), Duration.ZERO);
+        assertInvalidClient("localhost", 9090, Duration.ofSeconds(1), Duration.ofMillis(-1));
     }
 
     private void withServerAndClient(List<String> welcomeBanner,
@@ -111,6 +106,14 @@ class TcpClientTest {
                 interaction.accept(server, client);
             }
         }
+    }
+
+    private void assertInvalidClient(String host, int port, Duration connectTimeout, Duration retryInterval) {
+        assertThrows(IllegalArgumentException.class, () -> createClient(host, port, connectTimeout, retryInterval));
+    }
+
+    private TcpClient createClient(String host, int port, Duration connectTimeout, Duration retryInterval) {
+        return new TcpClient(host, port, connectTimeout, retryInterval);
     }
 
     @FunctionalInterface

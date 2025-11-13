@@ -13,6 +13,7 @@ import javax.swing.SwingWorker;
 import javax.swing.JTextArea;
 import java.awt.BorderLayout;
 import java.awt.Font;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -64,8 +65,17 @@ public class GameHostFrame extends BaseSessionFrame {
 
             @Override
             protected Void doInBackground() throws Exception {
+                if (isCancelled()) {
+                    return null;
+                }
                 session.connect();
+                if (isCancelled()) {
+                    return null;
+                }
                 jugadorId = session.ensureJugador();
+                if (isCancelled()) {
+                    return null;
+                }
                 partidoId = session.crearPartido();
                 return null;
             }
@@ -74,32 +84,51 @@ public class GameHostFrame extends BaseSessionFrame {
             protected void done() {
                 try {
                     get();
-                    statusLabel.setText("Esperando al segundo jugador...");
-                    updateInfoArea(jugadorId, partidoId);
-                    appendWelcomeMessages();
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                    showFailureAndReturn(LOGGER,
-                            "No se pudo crear la partida",
-                            "No se pudo crear la partida: ",
-                            interrupted,
-                            worker);
+                    handleHostingSuccess(jugadorId, partidoId);
+                } catch (InterruptedException ex) {
+                    handleInterrupted(ex);
                 } catch (ExecutionException ex) {
-                    showFailureAndReturn(LOGGER,
-                            "No se pudo crear la partida",
-                            "No se pudo crear la partida: ",
-                            ex,
-                            worker);
+                    handleExecutionFailure(ex);
+                } catch (CancellationException ex) {
+                    handleCancelled();
                 }
             }
         };
         worker.execute();
     }
 
+    private void handleHostingSuccess(int jugadorId, int partidoId) {
+        statusLabel.setText("Esperando al segundo jugador...");
+        updateInfoArea(jugadorId, partidoId);
+        appendWelcomeMessages();
+    }
+
+    private void handleInterrupted(InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        handleFailure(ex);
+    }
+
+    private void handleExecutionFailure(ExecutionException ex) {
+        Throwable cause = ex.getCause();
+        handleFailure(cause instanceof Exception ? (Exception) cause : new Exception(cause));
+    }
+
+    private void handleCancelled() {
+        statusLabel.setText("Creación de partida cancelada.");
+    }
+
+    private void handleFailure(Exception ex) {
+        showFailureAndReturn(LOGGER,
+                "No se pudo crear la partida",
+                "No se pudo crear la partida: ",
+                ex,
+                worker);
+    }
+
     private void updateInfoArea(int jugadorId, int partidoId) {
         StringBuilder sb = new StringBuilder();
         sb.append("Jugador ID: ").append(jugadorId).append('\n');
-        sb.append("C\u00f3digo de partida: ").append(partidoId).append('\n');
+        sb.append("Código de partida: ").append(partidoId).append('\n');
         appendServerDetails(sb);
         infoArea.setText(sb.toString());
     }
