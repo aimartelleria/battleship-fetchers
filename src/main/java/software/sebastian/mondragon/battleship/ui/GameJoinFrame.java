@@ -9,6 +9,8 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -125,52 +127,63 @@ public class GameJoinFrame extends JFrame {
     }
 
     private void connectToGame(JButton connectBtn) {
-        String input = gameCodeField.getText().trim();
-        if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Ingresa un código válido.", "Código requerido", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        int gameId;
-        try {
-            gameId = Integer.parseInt(input);
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "El código debe ser numérico.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        connectBtn.setEnabled(false);
-        statusLabel.setText("Conectando a la partida " + gameId + "...");
-
-        joinWorker = new SwingWorker<>() {
-            private int jugadorId;
-            private int partidaId;
-
-            @Override
-            protected Void doInBackground() throws Exception {
-                session.connect();
-                jugadorId = session.ensureJugador();
-                partidaId = session.unirsePartido(gameId);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    get();
-                    updateInfoAfterJoin(jugadorId, partidaId);
-                    statusLabel.setText("Conectado a la partida. Preparando tablero...");
-                    appendWelcomeMessages();
-                    openBoard();
-                } catch (Exception ex) {
-                    handleFailure(ex);
-                } finally {
-                    connectBtn.setEnabled(true);
-                }
-            }
-        };
-        joinWorker.execute();
+    String input = gameCodeField.getText().trim();
+    if (input.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Ingresa un código válido.", "Código requerido", JOptionPane.WARNING_MESSAGE);
+        return;
     }
+
+    int gameId;
+    try {
+        gameId = Integer.parseInt(input);
+    } catch (NumberFormatException ex) {
+        JOptionPane.showMessageDialog(this, "El código debe ser numérico.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    connectBtn.setEnabled(false);
+    statusLabel.setText("Conectando a la partida " + gameId + "...");
+
+    joinWorker = new SwingWorker<>() {
+        private int jugadorId;
+        private int partidaId;
+
+        @Override
+        protected Void doInBackground() throws Exception {
+            if (isCancelled()) return null;
+            session.connect();
+            if (isCancelled()) return null;
+            jugadorId = session.ensureJugador();
+            if (isCancelled()) return null;
+            partidaId = session.unirsePartido(gameId);
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            try {
+                get(); // may throw InterruptedException or ExecutionException
+                statusLabel.setText("Conectado a la partida. Preparando tablero...");
+                updateInfoAfterJoin(jugadorId, partidaId);
+                appendWelcomeMessages();
+                openBoard();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt(); // restore interrupted status
+                LOGGER.warning("Join thread was interrupted");
+                statusLabel.setText("Operación interrumpida.");
+            } catch (ExecutionException ex) {
+                Throwable cause = ex.getCause();
+                handleFailure(cause instanceof Exception ? (Exception) cause : new Exception(cause));
+            } catch (CancellationException ex) {
+                statusLabel.setText("Operación cancelada.");
+            } finally {
+                connectBtn.setEnabled(true);
+            }
+        }
+    };
+    joinWorker.execute();
+}
+
 
     private void updateInfoAfterJoin(int jugadorId, int partidaId) {
         StringBuilder sb = new StringBuilder(infoArea.getText());
