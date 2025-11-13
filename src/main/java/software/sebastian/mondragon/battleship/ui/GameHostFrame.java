@@ -2,58 +2,46 @@ package software.sebastian.mondragon.battleship.ui;
 
 import software.sebastian.mondragon.battleship.game.client.ClientSession;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
+import javax.swing.JTextArea;
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 // ----------------------------------
 //  GAME HOST FRAME
 // ----------------------------------
-public class GameHostFrame extends JFrame {
+@SuppressWarnings("serial")
+public class GameHostFrame extends BaseSessionFrame {
     private static final Logger LOGGER = Logger.getLogger(GameHostFrame.class.getName());
 
-    private final ClientSession session;
-    private final Supplier<ClientSession> sessionSupplier;
     private final JLabel statusLabel;
     private final JTextArea infoArea;
     private final JTextArea notificationArea;
-    private final java.util.function.Consumer<String> notificationConsumer;
-
-    private volatile boolean boardOpened;
-    private boolean cleanedUp;
     private SwingWorker<Void, Void> worker;
 
     public GameHostFrame(Supplier<ClientSession> sessionSupplier) {
-        this.sessionSupplier = Objects.requireNonNull(sessionSupplier, "sessionSupplier");
-        this.session = Objects.requireNonNull(sessionSupplier.get(), "session");
-
-        setTitle("Battleship - Crear Partida");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(420, 360);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout(10, 10));
+        super(sessionSupplier, "Battleship - Crear Partida");
 
         statusLabel = new JLabel("Conectando con el servidor...", SwingConstants.CENTER);
         statusLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         statusLabel.setName("statusLabel");
 
-        infoArea = createTextArea();
-        infoArea.setRows(4);
-        infoArea.setName("infoArea");
-        notificationArea = createTextArea();
-        notificationArea.setRows(8);
-        notificationArea.setName("notificationArea");
+        infoArea = createReadOnlyArea("infoArea", 4);
+        notificationArea = registerNotificationArea(createReadOnlyArea("notificationArea", 8));
 
         JButton cancelBtn = new JButton("Cancelar / Volver");
         cancelBtn.setName("cancelButton");
-        cancelBtn.addActionListener(e -> cancelAndReturn());
+        cancelBtn.addActionListener(e -> super.cancelAndReturn(worker));
 
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
@@ -65,33 +53,8 @@ public class GameHostFrame extends JFrame {
         add(centerPanel, BorderLayout.CENTER);
         add(cancelBtn, BorderLayout.SOUTH);
 
-        notificationConsumer = this::appendNotificationSafely;
-        session.agregarSuscriptorNotificaciones(notificationConsumer);
-
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosed(WindowEvent e) {
-                cleanup();
-            }
-        });
-
         startHosting();
         setVisible(true);
-    }
-
-    private JTextArea createTextArea() {
-        JTextArea area = new JTextArea();
-        area.setEditable(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        return area;
-    }
-
-    private JScrollPane createTitledScroll(String title, JTextArea area) {
-        JScrollPane scrollPane = new JScrollPane(area);
-        scrollPane.setBorder(BorderFactory.createTitledBorder(title));
-        return scrollPane;
     }
 
     private void startHosting() {
@@ -114,82 +77,38 @@ public class GameHostFrame extends JFrame {
                     statusLabel.setText("Esperando al segundo jugador...");
                     updateInfoArea(jugadorId, partidoId);
                     appendWelcomeMessages();
-                } catch (Exception ex) {
-                    handleFailure(ex);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    showFailureAndReturn(LOGGER,
+                            "No se pudo crear la partida",
+                            "No se pudo crear la partida: ",
+                            interrupted,
+                            worker);
+                } catch (ExecutionException ex) {
+                    showFailureAndReturn(LOGGER,
+                            "No se pudo crear la partida",
+                            "No se pudo crear la partida: ",
+                            ex,
+                            worker);
                 }
             }
         };
         worker.execute();
     }
 
-    private void appendWelcomeMessages() {
-        List<String> welcome = session.getWelcomeMessages();
-        for (String line : welcome) {
-            appendNotificationSafely("[Servidor] " + line);
-        }
-    }
-
     private void updateInfoArea(int jugadorId, int partidoId) {
         StringBuilder sb = new StringBuilder();
         sb.append("Jugador ID: ").append(jugadorId).append('\n');
-        sb.append("Código de partida: ").append(partidoId).append('\n');
-        if (session.getHost() != null) {
-            sb.append("Servidor: ").append(session.getHost());
-            if (session.getPort() > 0) {
-                sb.append(':').append(session.getPort());
-            }
-            sb.append('\n');
-        }
+        sb.append("C\u00f3digo de partida: ").append(partidoId).append('\n');
+        appendServerDetails(sb);
         infoArea.setText(sb.toString());
     }
 
-    private void appendNotificationSafely(String message) {
-        SwingUtilities.invokeLater(() -> {
-            notificationArea.append(message + System.lineSeparator());
-            notificationArea.setCaretPosition(notificationArea.getDocument().getLength());
-            Integer partidoId = session.getPartidoId();
-            if (!boardOpened && partidoId != null && message.contains("Partida " + partidoId + " iniciada")) {
-                openBoard();
-            }
-        });
-    }
-
-    private void openBoard() {
-        boardOpened = true;
-        session.quitarSuscriptorNotificaciones(notificationConsumer);
-        dispose();
-        new GameBoardFrame(session, sessionSupplier);
-    }
-
-    private void handleFailure(Exception ex) {
-        LOGGER.log(Level.SEVERE, "No se pudo crear la partida", ex);
-        JOptionPane.showMessageDialog(this,
-                "No se pudo crear la partida: " + ex.getMessage(),
-                "Error de conexión", JOptionPane.ERROR_MESSAGE);
-        cancelAndReturn();
-    }
-
-    private void cancelAndReturn() {
-        if (worker != null && !worker.isDone()) {
-            worker.cancel(true);
-        }
-        cleanup();
-        dispose();
-        new MainMenuFrame(sessionSupplier);
-    }
-
-    private void cleanup() {
-        if (cleanedUp) {
-            return;
-        }
-        cleanedUp = true;
-        session.quitarSuscriptorNotificaciones(notificationConsumer);
-        if (!boardOpened) {
-            try {
-                session.close();
-            } catch (IOException e) {
-                // Ignored
-            }
+    @Override
+    protected void onNotificationAppended(String message) {
+        Integer partidoId = session.getPartidoId();
+        if (partidoId != null && message.contains("Partida " + partidoId + " iniciada")) {
+            openBoard();
         }
     }
 }

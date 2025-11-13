@@ -49,89 +49,29 @@ class MainTest {
 
     @Test
     void testStartServerDesdeMainSeDetieneCuandoSeInterrumpe() throws Exception {
-        int port;
-        try (ServerSocket ss = new ServerSocket(0)) {
-            port = ss.getLocalPort();
-        }
+        int port = allocatePort();
+        List<String> logs = runServerScenario(Level.ALL, "main-server-thread", port, String.valueOf(port));
 
-        List<String> logs = captureMainLogs(Level.ALL, () -> {
-            Thread serverThread = new Thread(() -> Main.main(new String[]{String.valueOf(port)}), "main-server-thread");
-            serverThread.start();
-            try {
-                waitUntilPortOpen(port);
-                waitUntilThreadWaiting(serverThread);
-            } catch (Exception e) {
-                serverThread.interrupt();
-                throw new RuntimeException(e);
-            }
-            serverThread.interrupt();
-            try {
-                serverThread.join(5000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
-            if (serverThread.isAlive()) {
-                throw new AssertionError("El hilo del servidor no finalizo tras la interrupcion");
-            }
-        });
-
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Servidor TCP escuchando")));
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Servidor interrumpido")));
+        assertServerLifecycleLogs(logs);
     }
 
     @Test
     void testModoServerConPuertoPersonalizado() throws Exception {
-        int port;
-        try (ServerSocket ss = new ServerSocket(0)) {
-            port = ss.getLocalPort();
-        }
+        int port = allocatePort();
+        List<String> logs = runServerScenario(Level.ALL, "main-server-thread-server", port, "server", String.valueOf(port));
 
-        List<String> logs = captureMainLogs(Level.ALL, () -> {
-            Thread serverThread = new Thread(() -> Main.main(new String[]{"server", String.valueOf(port)}), "main-server-thread-server");
-            serverThread.start();
-            try {
-                waitUntilPortOpen(port);
-                waitUntilThreadWaiting(serverThread);
-            } catch (Exception e) {
-                serverThread.interrupt();
-                throw new RuntimeException(e);
-            }
-            serverThread.interrupt();
-            try {
-                serverThread.join(5000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
-            if (serverThread.isAlive()) {
-                throw new AssertionError("El hilo del servidor no finalizo tras la interrupcion");
-            }
-        });
-
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Servidor TCP escuchando")));
-        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Servidor interrumpido")));
+        assertServerLifecycleLogs(logs);
     }
 
     @Test
     void testModoClientConParametrosEjecutaLauncher() throws Exception {
-        List<String> lanzamientos = new ArrayList<>();
-        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
-                lanzamientos.add(host + ":" + port));
-
-        Main.main(new String[]{"client", "servidor.example", "12345"});
-
+        List<String> lanzamientos = captureClientLaunch("client", "servidor.example", "12345");
         assertEquals(List.of("servidor.example:12345"), lanzamientos);
     }
 
     @Test
     void testModoClientConHostVacioUsaValoresPorDefecto() throws Exception {
-        List<String> lanzamientos = new ArrayList<>();
-        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
-                lanzamientos.add(host + ":" + port));
-
-        Main.main(new String[]{"client", ""});
-
+        List<String> lanzamientos = captureClientLaunch("client", "");
         assertEquals(List.of("localhost:9090"), lanzamientos);
     }
 
@@ -214,6 +154,55 @@ class MainTest {
             logger.setUseParentHandlers(originalUseParentHandlers);
             logger.setLevel(originalLevel);
             handler.close();
+        }
+    }
+
+    private List<String> captureClientLaunch(String... args) throws Exception {
+        List<String> launches = new ArrayList<>();
+        Main.overrideClientHooks(() -> false, runnable -> runnable.run(), (host, port) ->
+                launches.add(host + ":" + port));
+        Main.main(args);
+        return launches;
+    }
+
+    private void assertServerLifecycleLogs(List<String> logs) {
+        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Servidor TCP escuchando")));
+        assertTrue(logs.stream().anyMatch(msg -> msg.contains("Servidor interrumpido")));
+    }
+
+    private List<String> runServerScenario(Level level, String threadName, int port, String... args) throws Exception {
+        return captureMainLogs(level, () -> startAndStopServer(threadName, port, args));
+    }
+
+    private void startAndStopServer(String threadName, int port, String... args) {
+        Thread serverThread = new Thread(() -> Main.main(args), threadName);
+        serverThread.start();
+        try {
+            waitUntilPortOpen(port);
+            waitUntilThreadWaiting(serverThread);
+        } catch (Exception e) {
+            serverThread.interrupt();
+            throw new RuntimeException(e);
+        }
+        interruptAndAwaitShutdown(serverThread);
+    }
+
+    private void interruptAndAwaitShutdown(Thread serverThread) {
+        serverThread.interrupt();
+        try {
+            serverThread.join(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+        if (serverThread.isAlive()) {
+            throw new AssertionError("El hilo del servidor no finalizo tras la interrupcion");
+        }
+    }
+
+    private int allocatePort() throws IOException {
+        try (ServerSocket ss = new ServerSocket(0)) {
+            return ss.getLocalPort();
         }
     }
 

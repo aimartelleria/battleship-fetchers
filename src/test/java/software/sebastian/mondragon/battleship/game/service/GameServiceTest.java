@@ -31,57 +31,33 @@ class GameServiceTest {
 
     @Test
     void testFlujoBasicoDePartida() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
+        TestMatch match = prepareMatch().start();
+        assertNotNull(repo.getJugador(match.hostId()).getMapaId());
+        assertNotNull(repo.getJugador(match.guestId()).getMapaId());
 
-        // asegurar que ambos tienen mapa
-        assertNotNull(repo.getJugador(j1.getId()).getMapaId());
-        assertNotNull(repo.getJugador(j2.getId()).getMapaId());
+        service.colocarBarco(match.hostId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
+        service.colocarBarco(match.guestId(), Arrays.asList(new int[]{5, 5}, new int[]{5, 6}));
 
-        // colocar barcos
-        service.colocarBarco(j1.getId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
-        service.colocarBarco(j2.getId(), Arrays.asList(new int[]{5, 5}, new int[]{5, 6}));
-
-        // forzar inicio de partida manualmente
-        p.setEstado(EstadoPartido.EN_CURSO);
-        p.setTurnoJugadorId(j1.getId());
-
-        // j1 dispara al barco de j2
-        ResultadoDisparo res1 = service.disparar(j1.getId(), p.getId(), 5, 5);
+        ResultadoDisparo res1 = service.disparar(match.hostId(), match.partidoId(), 5, 5);
         assertTrue(res1 == ResultadoDisparo.TOCADO || res1 == ResultadoDisparo.HUNDIDO);
 
-        // turno pasa a j2
-        assertEquals(j2.getId(), p.getTurnoJugadorId());
+        assertEquals(match.guestId(), match.partido().getTurnoJugadorId());
     }
 
     @Test
     void testDisparoAgua() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
+        TestMatch match = prepareMatch().start();
 
-        p.setEstado(EstadoPartido.EN_CURSO);
-        p.setTurnoJugadorId(j1.getId());
-
-        ResultadoDisparo r = service.disparar(j1.getId(), p.getId(), 0, 0);
+        ResultadoDisparo r = service.disparar(match.hostId(), match.partidoId(), 0, 0);
         assertEquals(ResultadoDisparo.AGUA, r);
         assertFalse(notifications.isEmpty());
     }
 
     @Test
     void testNoEsTuTurno() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
+        TestMatch match = prepareMatch().start();
 
-        p.setEstado(EstadoPartido.EN_CURSO);
-        p.setTurnoJugadorId(j1.getId());
-
-        Executable disparoFueraDeTurno = () -> service.disparar(j2.getId(), p.getId(), 1, 1);
+        Executable disparoFueraDeTurno = () -> service.disparar(match.guestId(), match.partidoId(), 1, 1);
         assertThrows(IllegalStateException.class, disparoFueraDeTurno);
     }
 
@@ -100,12 +76,9 @@ class GameServiceTest {
 
     @Test
     void testUnirsePartidoLleno() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
+        TestMatch match = prepareMatch();
         Jugador j3 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
-        Executable unirTercerJugador = () -> service.unirsePartido(p.getId(), j3.getId());
+        Executable unirTercerJugador = () -> service.unirsePartido(match.partidoId(), j3.getId());
         assertThrows(IllegalStateException.class, unirTercerJugador);
     }
 
@@ -119,15 +92,13 @@ class GameServiceTest {
 
     @Test
     void testUnirsePartidoIniciaJuego() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
+        TestMatch match = prepareMatch();
+        Partido partido = repo.getPartido(match.partidoId());
 
-        assertEquals(EstadoPartido.EN_CURSO, repo.getPartido(p.getId()).getEstado());
-        Integer turno = repo.getPartido(p.getId()).getTurnoJugadorId();
+        assertEquals(EstadoPartido.EN_CURSO, partido.getEstado());
+        Integer turno = partido.getTurnoJugadorId();
         assertNotNull(turno);
-        assertTrue(List.of(j1.getId(), j2.getId()).contains(turno));
+        assertTrue(List.of(match.hostId(), match.guestId()).contains(turno));
     }
 
     @Test
@@ -154,13 +125,11 @@ class GameServiceTest {
 
     @Test
     void testDispararPartidoNoEnCurso() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
+        TestMatch match = prepareMatch();
+        Partido p = match.partido();
         p.setEstado(EstadoPartido.FINALIZADO);
-        p.setTurnoJugadorId(j1.getId());
-        Executable disparoFueraDeEstado = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        p.setTurnoJugadorId(match.hostId());
+        Executable disparoFueraDeEstado = () -> service.disparar(match.hostId(), match.partidoId(), 0, 0);
         assertThrows(IllegalStateException.class, disparoFueraDeEstado);
     }
 
@@ -176,28 +145,18 @@ class GameServiceTest {
 
     @Test
     void testDispararCoordenadaFuera() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
-        p.setEstado(EstadoPartido.EN_CURSO);
-        p.setTurnoJugadorId(j1.getId());
-        Executable disparoFueraDeMapa = () -> service.disparar(j1.getId(), p.getId(), 50, 50);
+        TestMatch match = prepareMatch().start();
+        Executable disparoFueraDeMapa = () -> service.disparar(match.hostId(), match.partidoId(), 50, 50);
         assertThrows(IllegalArgumentException.class, disparoFueraDeMapa);
     }
 
     @Test
     void testDispararCoordenadaRepetida() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
-        p.setEstado(EstadoPartido.EN_CURSO);
-        p.setTurnoJugadorId(j1.getId());
-        ResultadoDisparo r = service.disparar(j1.getId(), p.getId(), 0, 0);
+        TestMatch match = prepareMatch().start();
+        ResultadoDisparo r = service.disparar(match.hostId(), match.partidoId(), 0, 0);
         assertEquals(ResultadoDisparo.AGUA, r);
-        p.setTurnoJugadorId(j1.getId());
-        Executable disparoRepetido = () -> service.disparar(j1.getId(), p.getId(), 0, 0);
+        match.partido().setTurnoJugadorId(match.hostId());
+        Executable disparoRepetido = () -> service.disparar(match.hostId(), match.partidoId(), 0, 0);
         assertThrows(IllegalStateException.class, disparoRepetido);
     }
 
@@ -214,24 +173,20 @@ class GameServiceTest {
 
     @Test
     void testDispararHundidoYGanador() {
-        Jugador j1 = service.crearJugador();
-        Jugador j2 = service.crearJugador();
-        Partido p = service.crearPartido(j1.getId());
-        service.unirsePartido(p.getId(), j2.getId());
-        service.colocarBarco(j2.getId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
-        p.setEstado(EstadoPartido.EN_CURSO);
-        p.setTurnoJugadorId(j1.getId());
+        TestMatch match = prepareMatch();
+        service.colocarBarco(match.guestId(), Arrays.asList(new int[]{0, 0}, new int[]{0, 1}));
+        match.start();
 
-        ResultadoDisparo r1 = service.disparar(j1.getId(), p.getId(), 0, 0);
+        ResultadoDisparo r1 = service.disparar(match.hostId(), match.partidoId(), 0, 0);
         assertEquals(ResultadoDisparo.TOCADO, r1);
-        p.setTurnoJugadorId(j1.getId());
-        ResultadoDisparo r2 = service.disparar(j1.getId(), p.getId(), 0, 1);
+        match.partido().setTurnoJugadorId(match.hostId());
+        ResultadoDisparo r2 = service.disparar(match.hostId(), match.partidoId(), 0, 1);
         assertEquals(ResultadoDisparo.HUNDIDO, r2);
 
-        Partido actualizado = repo.getPartido(p.getId());
+        Partido actualizado = repo.getPartido(match.partidoId());
         assertEquals(EstadoPartido.FINALIZADO, actualizado.getEstado());
 
-        Mapa mapa = repo.getMapa(repo.getJugador(j2.getId()).getMapaId());
+        Mapa mapa = repo.getMapa(repo.getJugador(match.guestId()).getMapaId());
         Optional<Coordenada> c1 = mapa.buscarPorFilaCol(0, 0);
         Optional<Coordenada> c2 = mapa.buscarPorFilaCol(0, 1);
         assertTrue(c1.isPresent() && c2.isPresent());
@@ -342,6 +297,38 @@ class GameServiceTest {
         method.invoke(service, 1, 2, 0, 0, ResultadoDisparo.HUNDIDO, null);
 
         assertTrue(notifications.stream().anyMatch(msg -> msg.contains("HUNDIDO")));
+    }
+
+    private TestMatch prepareMatch() {
+        return TestMatch.create(service);
+    }
+
+    private record TestMatch(Jugador host, Jugador guest, Partido partido) {
+        static TestMatch create(GameService service) {
+            Jugador host = service.crearJugador();
+            Jugador guest = service.crearJugador();
+            Partido partido = service.crearPartido(host.getId());
+            service.unirsePartido(partido.getId(), guest.getId());
+            return new TestMatch(host, guest, partido);
+        }
+
+        TestMatch start() {
+            partido.setEstado(EstadoPartido.EN_CURSO);
+            partido.setTurnoJugadorId(host.getId());
+            return this;
+        }
+
+        int hostId() {
+            return host.getId();
+        }
+
+        int guestId() {
+            return guest.getId();
+        }
+
+        int partidoId() {
+            return partido.getId();
+        }
     }
 
     private void invokePrivate(String name, Class<?>[] parameterTypes, Object... args) {

@@ -1,12 +1,9 @@
 package software.sebastian.mondragon.battleship.game.client;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import software.sebastian.mondragon.battleship.game.server.TcpServer;
 import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
+import software.sebastian.mondragon.battleship.game.support.AbstractTcpServerIntegrationTest;
 
-import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
@@ -17,28 +14,9 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests wiring {@link GameClientSession} against a live {@link TcpServer}.
+ * Integration tests wiring {@link GameClientSession} against a live TCP server.
  */
-class GameClientSessionIntegrationTest {
-    private TcpServer server;
-    private int port;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        try (ServerSocket ss = new ServerSocket(0)) {
-            port = ss.getLocalPort();
-        }
-        server = new TcpServer(port);
-        server.start();
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (server != null) {
-            server.stop();
-        }
-    }
-
+class GameClientSessionIntegrationTest extends AbstractTcpServerIntegrationTest {
     @Test
     void ensureJugadorAndCrearPartidoOperateOverTcp() throws Exception {
         try (GameClientSession session = new GameClientSession("127.0.0.1", port, Duration.ofSeconds(2))) {

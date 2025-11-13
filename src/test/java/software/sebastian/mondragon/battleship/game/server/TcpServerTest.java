@@ -1,7 +1,5 @@
 package software.sebastian.mondragon.battleship.game.server;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -9,7 +7,6 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +18,8 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import software.sebastian.mondragon.battleship.game.support.AbstractTcpServerIntegrationTest;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,27 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * These tests start the TCP server, connect clients, and verify
  * correct protocol responses and interaction sequences.
  */
-class TcpServerTest {
+class TcpServerTest extends AbstractTcpServerIntegrationTest {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
-
-    private TcpServer server;
-    private int port;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        try (ServerSocket ss = new ServerSocket(0)) {
-            port = ss.getLocalPort();
-        }
-        server = new TcpServer(port);
-        server.start();
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (server != null) {
-            server.stop();
-        }
-    }
 
     @Test
     void helpCommandListsAvailableCommands() throws Exception {

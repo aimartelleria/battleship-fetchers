@@ -2,11 +2,15 @@ package software.sebastian.mondragon.battleship.ui;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.fixture.FrameFixture;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import software.sebastian.mondragon.battleship.game.client.ClientSession;
 import software.sebastian.mondragon.battleship.game.client.TcpClient.ShipPlacementResult;
 import software.sebastian.mondragon.battleship.game.client.TcpClientException;
 import software.sebastian.mondragon.battleship.game.service.ResultadoDisparo;
+import software.sebastian.mondragon.battleship.ui.support.SwingTestSupport;
 
 import javax.swing.*;
 import java.awt.*;
@@ -24,19 +28,13 @@ class GameJoinFrameTest {
 
     @BeforeEach
     void setUp() {
-        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(),
-                "Entorno headless: se omiten pruebas de interfaz Swing");
-        System.setProperty("java.awt.headless", "false");
         sessionStub = new StubClientSession();
-        GameJoinFrame frame = GuiActionRunner.execute(() -> new GameJoinFrame(() -> sessionStub));
-        window = new FrameFixture(frame);
-        window.show();
+        window = SwingTestSupport.showFrame(() -> new GameJoinFrame(() -> sessionStub));
     }
 
     @AfterEach
     void tearDown() {
-        if (window != null) window.cleanUp();
-        for (Frame f : Frame.getFrames()) if (f.isVisible()) f.dispose();
+        SwingTestSupport.cleanup(window);
     }
 
     @Test
@@ -113,17 +111,16 @@ class GameJoinFrameTest {
         window.button("connectButton").click();
         GuiActionRunner.execute(() -> {
             GameJoinFrame gf = (GameJoinFrame) window.target();
-            gf.dispose(); // fuerza cancelación
+            gf.dispose();
         });
         assertFalse(sessionStub.cleanupCalled);
     }
-
 
     @Test
     @DisplayName("Agrega notificaciones de forma segura")
     void shouldAppendNotificationSafely() {
         GameJoinFrame frame = (GameJoinFrame) window.target();
-        GuiActionRunner.execute(() -> frame.appendNotificationSafely("Mensaje Test"));
+        GuiActionRunner.execute(() -> frame.appendNotificationForTesting("Mensaje Test"));
         assertTrue(window.textBox("notificationArea").text().contains("Mensaje Test"));
     }
 
@@ -190,17 +187,24 @@ class GameJoinFrameTest {
         }
 
         void triggerSuccessfulJoin(int jugadorId, int partidaId) {
-            if (subscriber != null)
+            if (subscriber != null) {
                 subscriber.accept("Unido correctamente");
+            }
         }
 
         void triggerFailure(Exception ex) {
-            if (subscriber != null)
+            if (subscriber != null) {
                 subscriber.accept("Error: " + ex.getMessage());
+            }
         }
 
-        public String getHost() { return host; }
-        public int getPort() { return port; }
+        public String getHost() {
+            return host;
+        }
+
+        public int getPort() {
+            return port;
+        }
 
         @Override
         public boolean isConnected() {

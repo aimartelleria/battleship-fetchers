@@ -21,6 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -48,8 +49,8 @@ public class TcpClient implements Closeable {
     private final List<String> welcomeMessages = new CopyOnWriteArrayList<>();
     private final Object sendLock = new Object();
     private final AtomicBoolean connected = new AtomicBoolean(false);
-
-    private volatile Consumer<String> notificationListener = message -> { };
+    private static final Consumer<String> NO_OP_LISTENER = message -> { };
+    private final AtomicReference<Consumer<String>> notificationListener = new AtomicReference<>(NO_OP_LISTENER);
     private Socket socket;
     private BufferedReader reader;
     private PrintWriter writer;
@@ -105,7 +106,7 @@ public class TcpClient implements Closeable {
      * Assigns a callback to receive asynchronous NOTIFY messages.
      */
     public void setNotificationListener(Consumer<String> listener) {
-        this.notificationListener = listener != null ? listener : message -> { };
+        notificationListener.set(listener != null ? listener : NO_OP_LISTENER);
     }
 
     /**
@@ -280,14 +281,14 @@ public class TcpClient implements Closeable {
                     continue;
                 }
                 if (line.startsWith("NOTIFY ")) {
-                    notificationListener.accept(line.substring("NOTIFY ".length()));
+                    notificationListener.get().accept(line.substring("NOTIFY ".length()));
                 } else {
-                    inbox.offer(line);
+                    enqueueLine(line);
                 }
             }
         } catch (IOException ex) {
             if (listening) {
-                inbox.offer("ERROR Connection lost: " + ex.getMessage());
+                enqueueLine("ERROR Connection lost: " + ex.getMessage());
             }
         } finally {
             listening = false;
@@ -339,6 +340,15 @@ public class TcpClient implements Closeable {
         String type = idx == -1 ? line : line.substring(0, idx);
         String payload = idx == -1 ? "" : line.substring(idx + 1);
         return new TcpResponse(line, type, payload);
+    }
+
+    private void enqueueLine(String line) {
+        try {
+            inbox.put(line);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while queueing server message", ex);
+        }
     }
 
     private record TcpResponse(String raw, String type, String payload) { }

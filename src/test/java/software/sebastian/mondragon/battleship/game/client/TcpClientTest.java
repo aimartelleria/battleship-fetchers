@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,7 +20,7 @@ class TcpClientTest {
         AtomicInteger playerSequence = new AtomicInteger(7);
         AtomicInteger shipSequence = new AtomicInteger(30);
 
-        try (FakeBattleshipServer server = new FakeBattleshipServer(
+        withServerAndClient(
                 List.of("WELCOME Battleship TCP", "READY"),
                 command -> {
                     if ("CREATE_PLAYER".equals(command)) {
@@ -38,32 +39,28 @@ class TcpClientTest {
                         return "BYE Adios";
                     }
                     return "ERROR Unexpected command: " + command;
-                })) {
-            server.start();
+                },
+                (server, client) -> {
+                    assertTrue(client.isConnected());
+                    assertEquals(List.of("WELCOME Battleship TCP", "READY"), client.getWelcomeMessages());
 
-            try (TcpClient client = new TcpClient("127.0.0.1", server.getPort(), Duration.ofSeconds(2), Duration.ofMillis(200))) {
-                client.connect();
-                assertTrue(client.isConnected());
-                assertEquals(List.of("WELCOME Battleship TCP", "READY"), client.getWelcomeMessages());
+                    assertEquals(7, client.createPlayer());
+                    assertEquals(List.of("Alpha", "Beta League"), client.listGames());
 
-                assertEquals(7, client.createPlayer());
-                assertEquals(List.of("Alpha", "Beta League"), client.listGames());
+                    TcpClient.ShipPlacementResult ship = client.placeShip(List.of(new int[]{0, 0}, new int[]{0, 1}));
+                    assertEquals(2, ship.size());
+                    assertTrue(ship.shipId() >= 30);
 
-                TcpClient.ShipPlacementResult ship = client.placeShip(List.of(new int[]{0, 0}, new int[]{0, 1}));
-                assertEquals(2, ship.size());
-                assertTrue(ship.shipId() >= 30);
+                    ResultadoDisparo result = client.shoot(123, 4, 5);
+                    assertEquals(ResultadoDisparo.TOCADO, result);
 
-                ResultadoDisparo result = client.shoot(123, 4, 5);
-                assertEquals(ResultadoDisparo.TOCADO, result);
-
-                assertDoesNotThrow(client::quit);
-            }
-        }
+                    assertDoesNotThrow(client::quit);
+                });
     }
 
     @Test
     void notificationListenerReceivesAsyncMessages() throws Exception {
-        try (FakeBattleshipServer server = new FakeBattleshipServer(
+        withServerAndClient(
                 List.of("WELCOME Battleship TCP"),
                 command -> {
                     if ("CREATE_PLAYER".equals(command)) {
@@ -73,25 +70,21 @@ class TcpClientTest {
                         return "BYE bye";
                     }
                     return "ERROR Unexpected: " + command;
-                })) {
-            server.start();
+                },
+                (server, client) -> {
+                    CountDownLatch latch = new CountDownLatch(1);
+                    client.setNotificationListener(message -> {
+                        if ("Turno listo".equals(message)) {
+                            latch.countDown();
+                        }
+                    });
 
-            try (TcpClient client = new TcpClient("127.0.0.1", server.getPort(), Duration.ofSeconds(2), Duration.ofMillis(200))) {
-                client.connect();
-                CountDownLatch latch = new CountDownLatch(1);
-                client.setNotificationListener(message -> {
-                    if ("Turno listo".equals(message)) {
-                        latch.countDown();
-                    }
+                    server.awaitClientConnected(Duration.ofSeconds(1));
+                    server.sendNotification("Turno listo");
+
+                    assertTrue(latch.await(1, TimeUnit.SECONDS), "El listener debe recibir la notificación");
+                    client.quit();
                 });
-
-                server.awaitClientConnected(Duration.ofSeconds(1));
-                server.sendNotification("Turno listo");
-
-                assertTrue(latch.await(1, TimeUnit.SECONDS), "El listener debe recibir la notificación");
-                client.quit();
-            }
-        }
     }
 
     @Test
@@ -106,5 +99,22 @@ class TcpClientTest {
                 () -> new TcpClient("localhost", 9090, Duration.ofMillis(-1), Duration.ZERO));
         assertThrows(IllegalArgumentException.class,
                 () -> new TcpClient("localhost", 9090, Duration.ofSeconds(1), Duration.ofMillis(-1)));
+    }
+
+    private void withServerAndClient(List<String> welcomeBanner,
+                                     Function<String, String> handler,
+                                     ClientInteraction interaction) throws Exception {
+        try (FakeBattleshipServer server = new FakeBattleshipServer(welcomeBanner, handler)) {
+            server.start();
+            try (TcpClient client = new TcpClient("127.0.0.1", server.getPort(), Duration.ofSeconds(2), Duration.ofMillis(200))) {
+                client.connect();
+                interaction.accept(server, client);
+            }
+        }
+    }
+
+    @FunctionalInterface
+    private interface ClientInteraction {
+        void accept(FakeBattleshipServer server, TcpClient client) throws Exception;
     }
 }

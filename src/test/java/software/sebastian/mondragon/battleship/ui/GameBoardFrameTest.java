@@ -1,12 +1,12 @@
 package software.sebastian.mondragon.battleship.ui;
 
-import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
 import org.assertj.swing.fixture.FrameFixture;
 import org.assertj.swing.fixture.JOptionPaneFixture;
 import org.junit.jupiter.api.*;
 import software.sebastian.mondragon.battleship.game.client.ClientSession;
 import software.sebastian.mondragon.battleship.ui.support.StubClientSession;
+import software.sebastian.mondragon.battleship.ui.support.SwingTestSupport;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,20 +23,14 @@ class GameBoardFrameTest {
 
     @BeforeEach
     void setUp() {
-        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(),
-                "Entorno headless: se omiten pruebas de interfaz Swing");
-        System.setProperty("java.awt.headless", "false");
         sessionStub = new StubClientSession();
-        GameBoardFrame frame = GuiActionRunner.execute(() -> new GameBoardFrame(sessionStub, StubClientSession::new));
-        window = new FrameFixture(frame);
-        window.show();
-        ownGrid = extractOwnGrid(frame);
+        window = SwingTestSupport.showFrame(() -> new GameBoardFrame(sessionStub, StubClientSession::new));
+        ownGrid = extractOwnGrid((GameBoardFrame) window.target());
     }
 
     @AfterEach
     void tearDown() {
-        if (window != null) window.cleanUp();
-        for (Frame f : Frame.getFrames()) if (f.isVisible()) f.dispose();
+        SwingTestSupport.cleanup(window);
     }
 
     @Test
