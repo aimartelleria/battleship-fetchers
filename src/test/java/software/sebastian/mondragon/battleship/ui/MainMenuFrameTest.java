@@ -44,14 +44,15 @@ class MainMenuFrameTest {
         window = null;
     }
 
-    @Test
+   @Test
     @DisplayName("El frame se crea correctamente con los tres botones")
     void shouldInitializeUI() {
-        JFrame frame = (JFrame) window.target();
-        assertEquals("Battleship - Menú Principal", frame.getTitle());
-        assertTrue(frame.isVisible());
+        JFrame mainFrame = (JFrame) window.target();
+        assertEquals("Battleship - Menú Principal", mainFrame.getTitle());
+        assertTrue(mainFrame.isVisible());
         window.button("crearBtn").requireVisible();
         window.button("unirseBtn").requireVisible();
         window.button("salirBtn").requireVisible();
     }
+
 }

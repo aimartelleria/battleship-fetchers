@@ -12,7 +12,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -75,7 +74,7 @@ class GameJoinFrameTest {
 
         GuiActionRunner.execute(() -> {
             sessionStub.connected = true;
-            sessionStub.triggerSuccessfulJoin(1, 123);
+            sessionStub.triggerSuccessfulJoin();
         });
 
         assertTrue(sessionStub.connected);
@@ -84,7 +83,7 @@ class GameJoinFrameTest {
 
     @Test
     @DisplayName("Llama cleanup correctamente y no lo repite")
-    void shouldCleanupOnce() throws IOException {
+    void shouldCleanupOnce() {
         sessionStub.closeThrow = true;
         JFrame frame = (JFrame) window.target();
         GuiActionRunner.execute(() -> {
@@ -177,7 +176,7 @@ class GameJoinFrameTest {
             return List.of("Bienvenido!", "Buena suerte!");
         }
 
-        void triggerSuccessfulJoin(int jugadorId, int partidaId) {
+        void triggerSuccessfulJoin() {
             if (subscriber != null)
                 subscriber.accept("Unido correctamente");
         }

@@ -114,10 +114,10 @@ class MainTest {
     }
 
     @Test
-    void testModoClientConParametrosEjecutaLauncher() throws Exception {
+    void testModoClientConParametrosEjecutaLauncher(){
         List<String> lanzamientos = new ArrayList<>();
-        Main.overrideClientHooks(runnable -> runnable.run(), (host, port) ->
-                lanzamientos.add(host + ":" + port));
+        Main.overrideClientHooks(Runnable::run, (host, port) ->
+            lanzamientos.add(host + ":" + port));
 
         Main.main(new String[]{"client", "servidor.example", "12345"});
 
@@ -125,9 +125,9 @@ class MainTest {
     }
 
     @Test
-    void testModoClientConHostVacioUsaValoresPorDefecto() throws Exception {
+    void testModoClientConHostVacioUsaValoresPorDefecto(){
         List<String> lanzamientos = new ArrayList<>();
-        Main.overrideClientHooks( runnable -> runnable.run(), (host, port) ->
+        Main.overrideClientHooks( Runnable::run, (host, port) ->
                 lanzamientos.add(host + ":" + port));
 
         Main.main(new String[]{"client", ""});
