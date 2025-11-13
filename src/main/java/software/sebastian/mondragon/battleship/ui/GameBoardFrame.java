@@ -17,16 +17,19 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public class GameBoardFrame extends JFrame {
+    private static final int TOTAL_SHIPS = 5;
     private final ClientSession session;
     private final Supplier<ClientSession> sessionSupplier;
     private final JButton[][] ownGrid = new JButton[10][10];
     private final JButton[][] enemyGrid = new JButton[10][10];
     private final JLabel statusLabel;
+    private final JButton readyBtn;
     JPanel selectedShip;
     int selectedShipSize;
     boolean horizontal = true;
     private JButton rotateBtn;
     private boolean cleanedUp;
+    private int shipsPlaced;
     private final java.util.function.Consumer<String> notificationConsumer;
 
     public GameBoardFrame(ClientSession session, Supplier<ClientSession> sessionSupplier) {
@@ -50,8 +53,9 @@ public class GameBoardFrame extends JFrame {
         boardsPanel.add(shipsPanel, BorderLayout.WEST);
         boardsPanel.add(gridsPanel, BorderLayout.CENTER);
 
-        JButton readyBtn = new JButton("Listo ✔");
+        readyBtn = new JButton("Listo ✔");
         readyBtn.setName("readyButton");
+        readyBtn.setEnabled(false);
         rotateBtn = new JButton("Dirección: Horizontal");
         rotateBtn.setName("rotateButton");
         JButton exitBtn = new JButton("Salir al menú");
@@ -272,9 +276,15 @@ public class GameBoardFrame extends JFrame {
             selectedShip.setEnabled(false);
             selectedShip.setOpaque(false);
             selectedShip.setBorder(null);
+            shipsPlaced++;
+            updateReadyButtonState();
         }
         selectedShip = null;
         selectedShipSize = 0;
+    }
+
+    private void updateReadyButtonState() {
+        readyBtn.setEnabled(shipsPlaced >= TOTAL_SHIPS);
     }
 
     void shootAt(int row, int col, JButton cell) {

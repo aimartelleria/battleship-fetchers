@@ -48,7 +48,8 @@ class GameBoardFrameMinimalTest {
         JFrame frame = (JFrame) window.target();
         assertEquals("Battleship - Tablero de Juego", frame.getTitle());
 
-        window.button(JButtonMatcher.withText("Listo ✔")).requireVisible();
+        JButton readyBtn = window.button(JButtonMatcher.withText("Listo ✔")).target();
+        assertFalse(readyBtn.isEnabled(), "El botón Listo debe iniciar desactivado");
         window.button(JButtonMatcher.withText("Dirección: Horizontal")).requireVisible();
         assertNotNull(ownGrid);
         assertNotNull(enemyGrid);
@@ -71,9 +72,32 @@ class GameBoardFrameMinimalTest {
     void shouldSetReadyStatus() throws Exception {
 
         JButton readyBtn = window.button(JButtonMatcher.withText("Listo ✔")).target();
+        placeAllShips();
         SwingUtilities.invokeAndWait(readyBtn::doClick);
         assertFalse(readyBtn.isEnabled());
         assertTrue(statusLabel.getText().contains("Listo"));
+    }
+
+    @Test
+    @DisplayName("Botón Listo se habilita tras colocar los 5 barcos")
+    void readyButtonRequiresAllShips() {
+        JButton readyBtn = window.button(JButtonMatcher.withText("Listo ✔")).target();
+        assertFalse(readyBtn.isEnabled());
+
+        placeShip("ship-2", 0, 0);
+        assertFalse(readyBtn.isEnabled());
+
+        placeShip("ship-3", 1, 0);
+        assertFalse(readyBtn.isEnabled());
+
+        placeShip("ship-3", 2, 0);
+        assertFalse(readyBtn.isEnabled());
+
+        placeShip("ship-4", 3, 0);
+        assertFalse(readyBtn.isEnabled());
+
+        placeShip("ship-5", 4, 0);
+        assertTrue(readyBtn.isEnabled(), "Solo tras los 5 barcos debe habilitarse");
     }
 
     @Test
@@ -144,6 +168,21 @@ class GameBoardFrameMinimalTest {
         return ship;
     }
 
+    private void placeAllShips() {
+        placeShip("ship-2", 0, 0);
+        placeShip("ship-3", 1, 0);
+        placeShip("ship-3", 2, 0);
+        placeShip("ship-4", 3, 0);
+        placeShip("ship-5", 4, 0);
+    }
+
+    private void placeShip(String shipName, int row, int col) {
+        JPanel shipPanel = selectShip(shipName);
+        releaseShipOnCell(row, col);
+        window.robot().waitForIdle();
+        assertFalse(shipPanel.isEnabled(), "El barco " + shipName + " debía quedar desactivado");
+    }
+
     private void releaseShipOnCell(int r, int c) {
         JButton cell = ownGrid[r][c];
         assertNotNull(cell, "Celda " + r + "," + c + " inexistente");
@@ -197,14 +236,28 @@ class GameBoardFrameMinimalTest {
     }
 
     private JPanel findByName(Container root, String name) {
-        if (name.equals(root.getName())) return (JPanel) root;
+        JPanel disabledMatch = null;
+        if (name.equals(root.getName())) {
+            JPanel panel = (JPanel) root;
+            if (panel.isEnabled()) {
+                return panel;
+            }
+            disabledMatch = panel;
+        }
         for (Component c : root.getComponents()) {
             if (c instanceof Container) {
                 JPanel found = findByName((Container) c, name);
-                if (found != null) return found;
+                if (found != null) {
+                    if (found.isEnabled()) {
+                        return found;
+                    }
+                    if (disabledMatch == null) {
+                        disabledMatch = found;
+                    }
+                }
             }
         }
-        return null;
+        return disabledMatch;
     }
     
 
