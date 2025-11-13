@@ -114,4 +114,3 @@ class MainMenuFrameTest {
         return result.get();
     }
 }
-
