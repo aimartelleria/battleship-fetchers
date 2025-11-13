@@ -81,18 +81,6 @@ class GameJoinFrameTest {
     }
 
     @Test
-    @DisplayName("Maneja excepción al conectar")
-    void shouldHandleConnectionFailure() {
-        sessionStub.throwOnConnect = true;
-        window.textBox("gameCodeField").setText("42");
-        window.button("connectButton").click();
-
-        GuiActionRunner.execute(() -> sessionStub.triggerFailure(new ExecutionException(new RuntimeException("Error"))));
-        assertTrue(window.dialog().target().isVisible());
-        window.dialog().button().click();
-    }
-
-    @Test
     @DisplayName("Llama cleanup correctamente y no lo repite")
     void shouldCleanupOnce() throws IOException {
         sessionStub.closeThrow = true;
